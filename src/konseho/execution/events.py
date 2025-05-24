@@ -1,10 +1,52 @@
 """Event system for observability."""
 
-from typing import Dict, Any, Callable, List
+from typing import Dict, Any, Callable, List, Optional
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum
 import asyncio
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+class EventType(Enum):
+    """Types of events emitted during council execution."""
+    COUNCIL_STARTED = "council:start"
+    COUNCIL_COMPLETED = "council:complete"
+    COUNCIL_ERROR = "council:error"
+    
+    STEP_STARTED = "step:start"
+    STEP_COMPLETED = "step:complete"
+    STEP_ERROR = "step:error"
+    
+    PARALLEL_STARTED = "parallel:start"
+    PARALLEL_COMPLETED = "parallel:complete"
+    
+    AGENT_STARTED = "agent:start"
+    AGENT_COMPLETED = "agent:complete"
+    AGENT_ERROR = "agent:error"
+    
+    DEBATE_STARTED = "debate:start"
+    DEBATE_ROUND = "debate:round"
+    PROPOSAL_MADE = "proposal:made"
+    VOTING_STARTED = "voting:start"
+    DECISION_MADE = "decision:made"
+    DEBATE_COMPLETED = "debate:complete"
+    
+    SPLIT_STARTED = "split:start"
+    SPLIT_ANALYSIS = "split:analysis"
+    SPLIT_DISTRIBUTED = "split:distributed"
+    SPLIT_COMPLETED = "split:complete"
+
+
+@dataclass
+class CouncilEvent:
+    """Event data structure for council execution events."""
+    type: EventType
+    data: Dict[str, Any]
+    metadata: Optional[Dict[str, Any]] = field(default_factory=dict)
+    timestamp: datetime = field(default_factory=datetime.now)
 
 
 class EventEmitter:
