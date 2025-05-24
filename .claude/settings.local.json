@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sudo useradd:*)",
+      "Bash(useradd:*)"
+    ],
+    "deny": []
+  }
+}

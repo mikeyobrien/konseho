@@ -1,0 +1,44 @@
+"""Human-in-the-loop agent implementation."""
+
+from typing import Optional, Callable
+import asyncio
+
+from .base import AgentWrapper
+
+
+class HumanAgent(AgentWrapper):
+    """Agent that prompts for human input."""
+    
+    def __init__(
+        self,
+        name: str = "human",
+        input_handler: Optional[Callable[[str], str]] = None
+    ):
+        """Initialize human agent.
+        
+        Args:
+            name: Name for the human agent
+            input_handler: Optional custom input handler
+        """
+        # No Strands agent needed for human
+        self.name = name
+        self.input_handler = input_handler or self._default_input_handler
+        self._history = []
+    
+    async def work_on(self, task: str) -> str:
+        """Prompt human for input."""
+        # Run input handler in executor to avoid blocking
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(None, self.input_handler, task)
+        
+        self._history.append({
+            "task": task,
+            "response": response
+        })
+        
+        return response
+    
+    def _default_input_handler(self, task: str) -> str:
+        """Default console input handler."""
+        print(f"\n[Human Input Required]\nTask: {task}\n")
+        return input("Your response: ")
