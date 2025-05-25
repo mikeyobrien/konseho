@@ -20,6 +20,13 @@ Usage:
     python -m konseho              # Start interactive chat
     python -m konseho --help       # Show this help
     python -m konseho --example    # Run with example agents
+    python -m konseho --config     # Show current model configuration
+    
+Model Provider Setup:
+    1. Copy .env.example to .env
+    2. Set DEFAULT_PROVIDER (anthropic, openai, bedrock, ollama)
+    3. Add your API keys
+    4. Install provider: pip install strands-agents[provider]
     
 For custom councils, create a Python script:
 
@@ -77,6 +84,14 @@ def main():
         print_usage()
         return
     
+    if "--config" in args:
+        from .config import print_config_info
+        print("\n📋 Current Model Configuration:")
+        print("-" * 30)
+        print_config_info()
+        print("\nTo change configuration, edit your .env file.")
+        return
+    
     if "--example" in args:
         print("🏛️  Starting Konseho with example council...")
         asyncio.run(run_interactive_chat())
@@ -84,6 +99,20 @@ def main():
         # Default: start interactive chat
         print("🏛️  Welcome to Konseho Interactive Council")
         print("=" * 50)
+        
+        # Check if model is configured
+        try:
+            from .config import get_model_config
+            config = get_model_config()
+            if config.provider in ["anthropic", "openai"] and not config.api_key:
+                print("\n⚠️  Warning: No API key found for", config.provider)
+                print("   Set up your model provider:")
+                print("   1. Copy .env.example to .env")
+                print("   2. Add your API keys")
+                print("   3. Run: python -m konseho --config\n")
+        except Exception:
+            pass
+            
         asyncio.run(run_interactive_chat())
 
 

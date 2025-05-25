@@ -2,6 +2,7 @@
 
 from typing import List, Optional
 from strands import Agent
+from konseho.config import create_model_from_config
 
 
 class ExplorerAgent(Agent):
@@ -10,7 +11,7 @@ class ExplorerAgent(Agent):
     def __init__(
         self,
         name: str = "Explorer",
-        model: str = "gpt-4",
+        model: Optional[str] = None,
         temperature: float = 0.3,
         tools: Optional[List[str]] = None
     ):
@@ -24,6 +25,10 @@ class ExplorerAgent(Agent):
         """
         if tools is None:
             tools = ["read_file", "search_files", "list_directory"]
+        
+        # Use configured model if not specified
+        if model is None:
+            model = create_model_from_config()
         
         super().__init__(
             name=name,
