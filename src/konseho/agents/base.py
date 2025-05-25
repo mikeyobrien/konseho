@@ -4,6 +4,8 @@ from typing import Any, Optional, Dict, List
 import asyncio
 import copy
 from dataclasses import dataclass, field
+from io import StringIO
+import sys
 
 from strands import Agent
 
@@ -28,11 +30,48 @@ class AgentWrapper:
         for key, value in kwargs.items():
             setattr(self, key, value)
     
-    async def work_on(self, task: str) -> str:
-        """Have the agent work on a task asynchronously."""
-        # Strands agents are synchronous, so we run in executor
-        loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(None, self.agent, task)
+    async def work_on(self, task: str, buffered: bool = True) -> str:
+        """Have the agent work on a task asynchronously.
+        
+        Args:
+            task: The task to work on
+            buffered: Whether to buffer output to prevent interleaving
+            
+        Returns:
+            The agent's response
+        """
+        # Lock to ensure sequential output when needed
+        if not hasattr(self.__class__, '_output_lock'):
+            self.__class__._output_lock = asyncio.Lock()
+        
+        if buffered:
+            async with self.__class__._output_lock:
+                # Capture stdout to prevent interleaved output
+                buffer = StringIO()
+                original_stdout = sys.stdout
+                
+                try:
+                    sys.stdout = buffer
+                    
+                    # Strands agents are synchronous, so we run in executor
+                    loop = asyncio.get_event_loop()
+                    result = await loop.run_in_executor(None, self.agent, task)
+                    
+                    # Get any printed output
+                    captured_output = buffer.getvalue()
+                    
+                finally:
+                    # Restore stdout before doing anything else
+                    sys.stdout = original_stdout
+                
+                # Now print the captured output all at once
+                if captured_output:
+                    print(f"\n[{self.name}]:\n{captured_output}", end='')
+                
+        else:
+            # Non-buffered execution
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(None, self.agent, task)
         
         # Extract the message from the result
         if hasattr(result, 'message'):
@@ -121,20 +160,34 @@ class AgentWrapper:
 def create_agent(**config) -> Agent:
     """Create a new Strands agent with given configuration.
     
-    This is a placeholder for actual Strands agent creation.
-    In production, this would use the Strands SDK.
+    Creates a real Strands agent using the provided configuration.
     """
-    # Mock implementation for testing
-    class MockConfiguredAgent:
-        def __init__(self, **kwargs):
-            for key, value in kwargs.items():
-                setattr(self, key, value)
-            self.call_count = 0
-            self.call_history = []
-        
-        def __call__(self, prompt: str):
-            self.call_count += 1
-            self.call_history.append(prompt)
-            return f"Response from {getattr(self, 'name', 'agent')}"
+    # Use configured model if not specified or if None
+    model = config.get('model')
+    if model is None:
+        from konseho.config import create_model_from_config
+        model = create_model_from_config()
     
-    return MockConfiguredAgent(**config)
+    tools = config.get('tools', [])
+    name = config.get('name', 'agent')
+    
+    # Create Strands agent with system prompt if provided
+    agent_args = {
+        'model': model,
+        'tools': tools
+    }
+    
+    # Add system prompt to agent creation if provided
+    if 'system_prompt' in config:
+        agent_args['system_prompt'] = config['system_prompt']
+    
+    # Create agent with all args
+    agent = Agent(**agent_args)
+    
+    # Set additional attributes if provided
+    if hasattr(agent, 'name'):
+        agent.name = name
+    if 'temperature' in config and hasattr(agent, 'temperature'):
+        agent.temperature = config['temperature']
+    
+    return agent

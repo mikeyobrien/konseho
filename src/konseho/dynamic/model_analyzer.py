@@ -98,9 +98,10 @@ class ModelBasedAnalyzer:
         """Initialize the analyzer.
         
         Args:
-            model: Model to use (defaults to config)
+            model: Model to use for analysis (defaults to config if not specified)
             temperature: Temperature for analysis (lower = more consistent)
         """
+        self.model = model
         self.temperature = temperature
         
         # Get persona registry and inject into prompt
@@ -114,7 +115,8 @@ class ModelBasedAnalyzer:
         self._analyzer_agent = create_agent(
             name="QueryAnalyzer",
             system_prompt=prompt_with_registry,
-            temperature=temperature
+            temperature=temperature,
+            model=model  # Pass the model parameter to create_agent
         )
     
     async def analyze(self, query: str) -> Dict[str, Any]:
@@ -130,25 +132,22 @@ class ModelBasedAnalyzer:
             # Get analysis from model
             # Call the agent directly in executor since Strands agents are synchronous
             loop = asyncio.get_event_loop()
-            result = await loop.run_in_executor(None, self._analyzer_agent, query)
+            agent_result = await loop.run_in_executor(None, self._analyzer_agent, query)
             
             # Extract the message from the result
             json_str = None
-            if hasattr(result, 'message'):
-                response = result.message
-                json_str = response.strip()
-            elif isinstance(result, dict):
-                # If result is already a dict, use it directly
-                analysis = result
-                # Skip JSON parsing
-            else:
-                response = str(result)
-                json_str = response.strip()
+            analysis = None
+            
+            # Convert result to string to get the actual content
+            result_str = str(agent_result)
+            
+            # The result string should contain the JSON
+            if result_str:
+                json_str = result_str.strip()
             
             # Parse JSON response if we have a string response
-            if json_str is not None:
+            if json_str is not None and analysis is None:
                 # The response might have markdown formatting, so extract JSON
-                json_str = response.strip()
                 if json_str.startswith("```json"):
                     json_str = json_str[7:]
                 if json_str.startswith("```"):
@@ -158,6 +157,14 @@ class ModelBasedAnalyzer:
                 
                 analysis = json.loads(json_str.strip())
             
+            # Ensure we have analysis
+            if analysis is None:
+                raise ValueError("Failed to extract analysis from model response")
+            
+            # Debug: check what we have
+            #print(f"DEBUG: Analysis type before processing: {type(analysis)}")
+            #print(f"DEBUG: Analysis keys before processing: {list(analysis.keys()) if isinstance(analysis, dict) else 'Not a dict'}")
+                
             # Convert task_type string to enum
             task_type_str = analysis.get("task_type", "general")
             analysis["task_type"] = self._parse_task_type(task_type_str)
@@ -177,9 +184,11 @@ class ModelBasedAnalyzer:
             return analysis
             
         except Exception as e:
-            # Fallback to basic analysis if model fails
-            print(f"Model analysis failed: {e}. Using fallback analysis.")
-            return self._fallback_analysis(query)
+            # Exit with error if model analysis fails
+            print(f"\n❌ Model analysis failed: {e}")
+            print("\nModel-based analysis is required but failed.")
+            print("Please check your model configuration and try again.")
+            raise RuntimeError(f"Model analysis failed: {e}") from e
     
     def _parse_task_type(self, task_type_str: str) -> TaskType:
         """Convert task type string to enum."""
@@ -194,74 +203,23 @@ class ModelBasedAnalyzer:
             "general": TaskType.GENERAL
         }
         return mapping.get(task_type_str.lower(), TaskType.GENERAL)
-    
-    def _fallback_analysis(self, query: str) -> Dict[str, Any]:
-        """Provide basic analysis if model fails."""
-        return {
-            "task_type": TaskType.GENERAL,
-            "domains": ["general"],
-            "complexity": "medium",
-            "suggested_agents": [
-                {
-                    "name": "Explorer",
-                    "role": "Explore different approaches",
-                    "expertise": "research",
-                    "personality": "creative"
-                },
-                {
-                    "name": "Analyst",
-                    "role": "Analyze options and trade-offs",
-                    "expertise": "analysis",
-                    "personality": "analytical"
-                },
-                {
-                    "name": "Implementer",
-                    "role": "Focus on practical execution",
-                    "expertise": "implementation",
-                    "personality": "pragmatic"
-                }
-            ],
-            "workflow_steps": [
-                {
-                    "type": "debate",
-                    "description": "Collaborative problem solving",
-                    "participants": ["Explorer", "Analyst", "Implementer"]
-                }
-            ],
-            "reasoning": "Using general-purpose configuration due to analysis failure.",
-            "suggested_agent_count": 3,
-            "needs_parallel": False,
-            "needs_debate": True,
-            "query": query
-        }
 
 
-class HybridAnalyzer:
-    """Combines regex-based and model-based analysis for robustness."""
+class ModelAnalyzer:
+    """Model-based query analyzer (no fallback)."""
     
-    def __init__(self, use_model: bool = True, model: Optional[str] = None):
-        """Initialize the hybrid analyzer.
+    def __init__(self, model: Optional[str] = None, temperature: float = 0.3):
+        """Initialize the analyzer.
         
         Args:
-            use_model: Whether to use model-based analysis
-            model: Model to use for analysis
+            model: Model to use for analysis (defaults to config if not specified)
+            temperature: Temperature for analysis (lower = more consistent)
         """
-        self.use_model = use_model
-        if use_model:
-            self.model_analyzer = ModelBasedAnalyzer(model=model)
-        
-        # Import the regex analyzer as fallback
-        from .analyzer import QueryAnalyzer
-        self.regex_analyzer = QueryAnalyzer()
+        self.model_analyzer = ModelBasedAnalyzer(model=model, temperature=temperature)
     
     async def analyze(self, query: str) -> Dict[str, Any]:
-        """Analyze query using best available method."""
-        if self.use_model:
-            try:
-                # Try model-based analysis first
-                return await self.model_analyzer.analyze(query)
-            except Exception as e:
-                print(f"Model analysis failed, using regex: {e}")
+        """Analyze query using model-based analysis.
         
-        # Fall back to regex-based analysis
-        return self.regex_analyzer.analyze(query)
+        Model-based analysis is required. There is no fallback.
+        """
+        return await self.model_analyzer.analyze(query)

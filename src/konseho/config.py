@@ -102,11 +102,22 @@ def create_model_from_config(config: Optional[ModelConfig] = None):
         
         elif config.provider == "anthropic":
             from strands.models.anthropic import AnthropicModel
-            return AnthropicModel(
+            # Extract max_tokens from additional_args
+            additional_args = config.additional_args or {}
+            max_tokens = additional_args.get("max_tokens", 2000)
+            temperature = additional_args.get("temperature", 0.7)
+            
+            model = AnthropicModel(
                 client_args={"api_key": config.api_key},
-                model_id=config.model_id,
-                **config.additional_args or {}
+                model_id=config.model_id
             )
+            # Set config after initialization
+            model.config = {
+                "max_tokens": max_tokens,
+                "model_id": config.model_id,
+                "temperature": temperature
+            }
+            return model
         
         elif config.provider == "ollama":
             from strands.models.ollama import OllamaModel
