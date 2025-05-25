@@ -210,15 +210,29 @@ async def run_single_query(prompt: str, council: Optional[Council] = None, dynam
         print("\n" + "=" * 50)
         print("📊 Final Result:")
         print("=" * 50)
-        if result.final_answer:
-            print(f"\n{result.final_answer}")
+        
+        # Extract the winner from the last step result
+        final_answer = None
+        if isinstance(result, dict) and "results" in result:
+            step_results = result["results"]
+            # Get the last step's result
+            last_step_key = sorted([k for k in step_results.keys() if k.startswith("step_")])[-1] if step_results else None
+            if last_step_key and isinstance(step_results[last_step_key], dict):
+                step_result = step_results[last_step_key]
+                if "winner" in step_result:
+                    final_answer = step_result["winner"]
+        
+        if final_answer:
+            # Truncate if too long
+            display_answer = final_answer[:1000] + "..." if len(final_answer) > 1000 else final_answer
+            print(f"\n{display_answer}")
         else:
             print("\n[No final answer produced]")
         
-        # Only show metadata if it's meaningful
-        if result.metadata and any(result.metadata.values()):
+        # Show execution metadata
+        if isinstance(result, dict) and "metadata" in result and result["metadata"]:
             print(f"\n📈 Summary:")
-            for key, value in result.metadata.items():
+            for key, value in result["metadata"].items():
                 if value:
                     print(f"  • {key}: {value}")
         
@@ -254,13 +268,27 @@ def main():
         prompt_index = args.index("-p")
         if prompt_index + 1 < len(args):
             prompt = args[prompt_index + 1]
+        else:
+            print("❌ Error: -p flag requires a prompt argument")
+            print("Usage: konseho -p \"your query\"")
+            return
     elif "--prompt" in args:
         prompt_index = args.index("--prompt")
         if prompt_index + 1 < len(args):
             prompt = args[prompt_index + 1]
+        else:
+            print("❌ Error: --prompt flag requires a prompt argument")
+            print("Usage: konseho --prompt \"your query\"")
+            return
     
     # Check for quiet mode (less verbose output)
     quiet_mode = "-q" in args or "--quiet" in args
+    
+    # Validate prompt if provided
+    if prompt is not None and not prompt.strip():
+        print("❌ Error: Prompt cannot be empty")
+        print("Usage: konseho -p \"your query\"")
+        return
     
     # Check environment setup first
     import os

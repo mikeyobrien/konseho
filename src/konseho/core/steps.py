@@ -51,7 +51,11 @@ class DebateStep(Step):
         """Collect votes from all agents."""
         voting_prompt = "Vote for the best proposal. Reply with 'I vote for: [proposal name]' or 'I abstain from voting'\n\n"
         for name, proposal in proposals.items():
-            voting_prompt += f"{name}: {proposal[:200]}...\n\n"
+            # Handle proposals that might be shorter than 200 chars
+            if len(proposal) > 200:
+                voting_prompt += f"{name}: {proposal[:200]}...\n\n"
+            else:
+                voting_prompt += f"{name}: {proposal}\n\n"
         
         vote_tasks = []
         for agent in self.agents:
@@ -73,6 +77,10 @@ class DebateStep(Step):
     
     def _extract_vote(self, response: str, proposals: Dict[str, str]) -> Optional[str]:
         """Extract vote from agent response."""
+        # Ensure response is a string
+        if not isinstance(response, str):
+            response = str(response)
+        
         # Check for abstention
         if "abstain" in response.lower():
             return "ABSTAIN"
@@ -83,7 +91,9 @@ class DebateStep(Step):
             voted_text = vote_match.group(1).strip()
             # Match to proposal
             for name, proposal in proposals.items():
-                if name.lower() in voted_text.lower() or voted_text.lower() in proposal.lower():
+                # Ensure proposal is a string
+                proposal_str = str(proposal) if not isinstance(proposal, str) else proposal
+                if name.lower() in voted_text.lower() or voted_text.lower() in proposal_str.lower():
                     return proposal
         
         return None
@@ -93,8 +103,15 @@ class DebateStep(Step):
         vote_counts = Counter(votes.values())
         
         # Initialize all proposals with 0 votes
-        proposal_votes = {proposal: 0 for proposal in proposals.values()}
-        proposal_votes.update(vote_counts)
+        # Use proposal names as keys instead of proposal content to avoid unhashable dict issues
+        proposal_votes = {name: 0 for name in proposals.keys()}
+        
+        # Count votes by matching proposal content
+        for voter, voted_content in votes.items():
+            for prop_name, prop_content in proposals.items():
+                if str(prop_content) == str(voted_content):
+                    proposal_votes[prop_name] += 1
+                    break
         
         if not vote_counts:
             # No valid votes, return first proposal
@@ -126,17 +143,24 @@ class DebateStep(Step):
     
     def _count_weighted_votes(self, votes: Dict[str, str], proposals: Dict[str, str]) -> Dict[str, Any]:
         """Count votes with agent expertise weighting."""
-        weighted_scores = {proposal: 0.0 for proposal in proposals.values()}
+        # Use proposal names as keys to avoid unhashable dict issues
+        weighted_scores = {name: 0.0 for name in proposals.keys()}
         
         for agent in self.agents:
             if agent.name in votes:
                 # Get expertise level (default to 0.5 if not set)
                 expertise = getattr(agent, 'expertise_level', 0.5)
-                voted_proposal = votes[agent.name]
-                weighted_scores[voted_proposal] += expertise
+                voted_content = votes[agent.name]
+                
+                # Find which proposal was voted for
+                for prop_name, prop_content in proposals.items():
+                    if str(prop_content) == str(voted_content):
+                        weighted_scores[prop_name] += expertise
+                        break
         
-        # Find winner
-        winner = max(weighted_scores.items(), key=lambda x: x[1])[0]
+        # Find winner by name, then get the actual proposal content
+        winner_name = max(weighted_scores.items(), key=lambda x: x[1])[0]
+        winner = proposals[winner_name]
         
         return {
             "winner": winner,
@@ -147,8 +171,16 @@ class DebateStep(Step):
         """Extract selected proposal from moderator response."""
         # Look for proposal mentions in response
         for name, proposal in proposals.items():
-            if name in response or proposal[:50] in response:
+            # Check name match
+            if name in response:
                 return proposal
+            # Check proposal content match (handle short proposals)
+            if len(proposal) > 50:
+                if proposal[:50] in response:
+                    return proposal
+            else:
+                if proposal in response:
+                    return proposal
         
         # Default to first proposal if unclear
         return list(proposals.values())[0]
@@ -156,7 +188,15 @@ class DebateStep(Step):
     async def _check_consensus(self, proposals: List[str]) -> bool:
         """Check if all agents proposed the same solution."""
         # Simple check: all proposals are very similar
-        if len(set(prop[:100] for prop in proposals)) == 1:
+        # Handle proposals that might be shorter than 100 chars
+        normalized_proposals = set()
+        for prop in proposals:
+            if len(prop) > 100:
+                normalized_proposals.add(prop[:100])
+            else:
+                normalized_proposals.add(prop)
+        
+        if len(normalized_proposals) == 1:
             return True
         return False
     
@@ -242,14 +282,28 @@ class DebateStep(Step):
     
     async def _get_proposal(self, agent: AgentWrapper, prompt: str) -> str:
         """Get a proposal from an agent."""
-        return await agent.work_on(prompt)
+        result = await agent.work_on(prompt)
+        # Ensure we return a string, not a dict
+        if isinstance(result, dict):
+            # If it's a dict, try to extract a message or convert to string
+            if 'message' in result:
+                return str(result['message'])
+            elif 'content' in result:
+                return str(result['content'])
+            else:
+                return str(result)
+        return str(result)
     
     def _create_debate_prompt(self, proposals: Dict[str, str], round_num: int) -> str:
         """Create a prompt summarizing the debate so far."""
         prompt = f"Debate Round {round_num + 1}\n\nCurrent Proposals:\n"
         for name, proposal in proposals.items():
             if not name.endswith(f"_round_{round_num}"):  # Skip future rounds
-                prompt += f"\n{name}:\n{proposal[:500]}...\n"
+                # Handle proposals that might be shorter than 500 chars
+                if len(proposal) > 500:
+                    prompt += f"\n{name}:\n{proposal[:500]}...\n"
+                else:
+                    prompt += f"\n{name}:\n{proposal}\n"
         return prompt
     
     async def _select_winner(self, proposals: Dict[str, str], all_proposals: List[str], task: str, context: Context) -> Dict[str, Any]:
@@ -260,7 +314,11 @@ class DebateStep(Step):
         if self.voting_strategy == "moderator" and self.moderator:
             prompt = f"Select the best proposal for: {task}\n\nProposals:\n"
             for name, proposal in original_proposals.items():
-                prompt += f"\n{name}: {proposal[:300]}...\n"
+                # Handle proposals that might be shorter than 300 chars
+                if len(proposal) > 300:
+                    prompt += f"\n{name}: {proposal[:300]}...\n"
+                else:
+                    prompt += f"\n{name}: {proposal}\n"
             response = await self.moderator.work_on(prompt)
             
             # Extract selected proposal from moderator response
