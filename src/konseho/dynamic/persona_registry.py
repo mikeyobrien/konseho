@@ -1,7 +1,7 @@
 """Registry of available agent personas and capabilities."""
 
 from typing import Dict, List, Any
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass
@@ -14,6 +14,7 @@ class PersonaTemplate:
     description: str  # Brief description for the model
     system_prompt: str  # Full system prompt
     temperature: float = 0.7
+    tools: List[Any] = field(default_factory=list)  # List of Strands-compatible tools
 
 
 class PersonaRegistry:

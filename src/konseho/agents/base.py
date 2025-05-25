@@ -7,7 +7,8 @@ from dataclasses import dataclass, field
 from io import StringIO
 import sys
 
-from strands import Agent
+from strands import Agent, tool
+from konseho.tools.parallel import ParallelExecutor
 
 
 class AgentWrapper:
@@ -25,6 +26,10 @@ class AgentWrapper:
         self.name = name or f"agent_{id(agent)}"
         self._history = []
         self.system_prompt_override = None
+        self._parallel_executor = ParallelExecutor()
+        
+        # Add parallel tool to agent
+        self._inject_parallel_tool()
         
         # Store any additional attributes
         for key, value in kwargs.items():
@@ -118,6 +123,38 @@ class AgentWrapper:
             cloned_wrapper.system_prompt_override = self.system_prompt_override
         
         return cloned_wrapper
+    
+    def _inject_parallel_tool(self):
+        """Add parallel execution tool to agent."""
+        @tool
+        def parallel(tool_name: str, args_list: List[Dict[str, Any]]) -> List[Any]:
+            """Execute any tool multiple times in parallel with different arguments.
+            
+            Args:
+                tool_name: Name of the tool to execute
+                args_list: List of argument dictionaries for each execution
+                
+            Returns:
+                List of results in the same order as arguments
+                
+            Example:
+                parallel("file_read", [{"path": "file1.py"}, {"path": "file2.py"}])
+            """
+            # Find the tool in agent's tools
+            target_tool = None
+            for t in self.agent.tools:
+                if hasattr(t, '__name__') and t.__name__ == tool_name:
+                    target_tool = t
+                    break
+            
+            if not target_tool:
+                return [f"Error: Tool '{tool_name}' not found" for _ in args_list]
+            
+            return self._parallel_executor.execute_parallel(target_tool, args_list)
+        
+        # Add to agent's tools if not already present
+        if hasattr(self.agent, 'tools') and isinstance(self.agent.tools, list):
+            self.agent.tools.append(parallel)
     
     def _clone_agent(self, agent: Agent) -> Agent:
         """Clone a Strands agent preserving its configuration."""
