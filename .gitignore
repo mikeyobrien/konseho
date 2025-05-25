@@ -152,4 +152,4 @@ ehthumbs.db
 
 # uv
 .uv/
-uv.lock
+uv.lock.env

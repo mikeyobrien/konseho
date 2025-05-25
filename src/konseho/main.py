@@ -19,8 +19,9 @@ def print_usage():
 Usage:
     python -m konseho              # Start interactive chat
     python -m konseho --help       # Show this help
-    python -m konseho --example    # Run with example agents
+    python -m konseho --setup      # Run setup wizard (first time)
     python -m konseho --config     # Show current model configuration
+    python -m konseho --example    # Run with example agents
     
 Model Provider Setup:
     1. Copy .env.example to .env
@@ -84,6 +85,11 @@ def main():
         print_usage()
         return
     
+    if "--setup" in args:
+        from .setup_wizard import run_setup_wizard
+        run_setup_wizard()
+        return
+    
     if "--config" in args:
         from .config import print_config_info
         print("\n📋 Current Model Configuration:")
@@ -100,18 +106,23 @@ def main():
         print("🏛️  Welcome to Konseho Interactive Council")
         print("=" * 50)
         
-        # Check if model is configured
-        try:
-            from .config import get_model_config
-            config = get_model_config()
-            if config.provider in ["anthropic", "openai"] and not config.api_key:
-                print("\n⚠️  Warning: No API key found for", config.provider)
-                print("   Set up your model provider:")
-                print("   1. Copy .env.example to .env")
-                print("   2. Add your API keys")
-                print("   3. Run: python -m konseho --config\n")
-        except Exception:
-            pass
+        # Check if this is first run
+        import os
+        if not os.path.exists(".env"):
+            print("\n🆕 First time using Konseho?")
+            print("   Run setup wizard: python -m konseho --setup")
+            print("   Or copy .env.example to .env and add your API keys\n")
+        else:
+            # Check if model is configured
+            try:
+                from .config import get_model_config
+                config = get_model_config()
+                if config.provider in ["anthropic", "openai"] and not config.api_key:
+                    print("\n⚠️  Warning: No API key found for", config.provider)
+                    print("   Run: python -m konseho --setup")
+                    print("   Or edit .env to add your API key\n")
+            except Exception:
+                pass
             
         asyncio.run(run_interactive_chat())
 
