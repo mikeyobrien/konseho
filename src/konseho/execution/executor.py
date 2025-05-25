@@ -1,14 +1,16 @@
 """Async execution engine for councils."""
 
 import asyncio
-from typing import List, Dict, Any, Optional, Callable, Union
+from typing import List, Dict, Any, Optional, Callable, Union, TYPE_CHECKING
 from collections import Counter
 import logging
 
-from ..core.council import Council
 from ..core.context import Context
 from ..core.steps import Step
 from .events import EventType, CouncilEvent, EventEmitter
+
+if TYPE_CHECKING:
+    from ..core.council import Council
 
 logger = logging.getLogger(__name__)
 
@@ -153,7 +155,7 @@ class AsyncExecutor:
         self._semaphore = asyncio.Semaphore(max_concurrent)
         self._active_tasks: Dict[str, asyncio.Task] = {}
     
-    async def execute_council(self, council: Council, task: str) -> Dict[str, Any]:
+    async def execute_council(self, council: "Council", task: str) -> Dict[str, Any]:
         """Execute a council with concurrency control."""
         async with self._semaphore:
             logger.info(f"Executing council: {council.name}")
@@ -193,7 +195,7 @@ class AsyncExecutor:
     
     async def execute_many(
         self,
-        councils: List[Council],
+        councils: List["Council"],
         tasks: List[str]
     ) -> List[Dict[str, Any]]:
         """Execute multiple councils in parallel."""
