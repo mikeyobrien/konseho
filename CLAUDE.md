@@ -19,7 +19,7 @@ Konseho is a Python SDK for creating multi-agent "councils" built on top of the 
 # Run the main module
 ./run.sh
 # Or directly:
-python -m src.konseho
+uv run python -m konseho
 ```
 
 ### Development Tasks

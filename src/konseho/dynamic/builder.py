@@ -18,17 +18,21 @@ class DynamicCouncilBuilder:
         
         Args:
             verbose: Whether to print verbose output
-            analyzer_model: Model to use for query analysis (defaults to config if not specified)
+            analyzer_model: Model to use for query analysis (defaults to Claude Opus 4 if not specified)
             analyzer_temperature: Temperature for analysis (lower = more consistent)
         """
         self.verbose = verbose
+        
+        # Default to Claude Opus 4 for analysis if not specified
+        if analyzer_model is None:
+            analyzer_model = "claude-opus-4-20250514"
         
         # Model-based components only (no fallback)
         self.analyzer = ModelAnalyzer(model=analyzer_model, temperature=analyzer_temperature)
         self.model_factory = ModelAgentFactory()
         self.model_planner = ModelStepPlanner()
     
-    async def build(self, query: str, context: Optional[Context] = None) -> Council:
+    async def build(self, query: str, context: Optional[Context] = None, save_outputs: bool = False, output_dir: Optional[str] = None) -> Council:
         """Build a council optimized for the given query."""
         # Model-based analysis is always async
         analysis = await self.analyzer.analyze(query)
@@ -100,7 +104,9 @@ class DynamicCouncilBuilder:
         council = Council(
             name="DynamicCouncil",
             steps=steps,  # Pass steps directly
-            context=context
+            context=context,
+            save_outputs=save_outputs,
+            output_dir=output_dir
         )
         
         return council
@@ -118,7 +124,7 @@ class DynamicCouncilBuilder:
 
 
 # Convenience function for quick council creation
-async def create_dynamic_council(query: str, verbose: bool = False, analyzer_model: Optional[str] = None) -> Council:
+async def create_dynamic_council(query: str, verbose: bool = False, analyzer_model: Optional[str] = None, save_outputs: bool = False, output_dir: Optional[str] = None) -> Council:
     """Create a council dynamically based on a query.
     
     This is the main entry point for dynamic council creation.
@@ -136,4 +142,4 @@ async def create_dynamic_council(query: str, verbose: bool = False, analyzer_mod
         >>> result = await council.run("def login(username, password): ...")
     """
     builder = DynamicCouncilBuilder(verbose=verbose, analyzer_model=analyzer_model)
-    return await builder.build(query)
+    return await builder.build(query, save_outputs=save_outputs, output_dir=output_dir)

@@ -44,7 +44,7 @@ def get_model_config() -> ModelConfig:
     elif provider == "anthropic":
         return ModelConfig(
             provider="anthropic",
-            model_id=os.getenv("DEFAULT_MODEL", "claude-3-opus-20240229"),
+            model_id=os.getenv("DEFAULT_MODEL", "claude-sonnet-4-20250514"),
             api_key=os.getenv("ANTHROPIC_API_KEY"),
             additional_args={
                 "temperature": float(os.getenv("TEMPERATURE", "0.7")),

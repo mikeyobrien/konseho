@@ -11,6 +11,64 @@ class ModelAgentFactory:
     def __init__(self):
         self.registry = PERSONA_REGISTRY
     
+    def _resolve_tools(self, tool_names: List[Any]) -> List[Any]:
+        """Resolve tool names to actual tool instances.
+        
+        Args:
+            tool_names: List of tool names or tool instances
+            
+        Returns:
+            List of resolved tool instances
+        """
+        resolved_tools = []
+        
+        for item in tool_names:
+            if isinstance(item, str):
+                # It's a tool name - resolve it
+                if item == "web_search":
+                    # Try to get MCP search tool first
+                    mcp_tool = self._get_mcp_search_tool()
+                    if mcp_tool:
+                        # Use MCP tool directly - it's already a properly decorated Strands tool
+                        resolved_tools.append(mcp_tool)
+                    else:
+                        # Fallback to regular search tool
+                        try:
+                            from ..tools.search_tool import web_search
+                            resolved_tools.append(web_search)
+                        except ImportError:
+                            print(f"Warning: Could not import {item} tool")
+                else:
+                    print(f"Warning: Unknown tool name: {item}")
+            else:
+                # It's already a tool instance
+                resolved_tools.append(item)
+        
+        return resolved_tools
+    
+    def _get_mcp_search_tool(self):
+        """Try to get search tool from MCP servers.
+        
+        Returns:
+            MCP search tool if available, None otherwise
+        """
+        try:
+            from ..mcp.strands_integration import StrandsMCPManager
+            
+            manager = StrandsMCPManager()
+            # Try to get tool from brave-search server
+            tools = manager.get_tools("brave-search")
+            
+            # Return the first tool (should be brave_web_search)
+            if tools:
+                print(f"Using MCP search tool from brave-search server")
+                return tools[0]
+                
+        except Exception as e:
+            print(f"Could not get MCP search tool: {e}")
+        
+        return None
+    
     def create_agents_from_spec(self, agent_specs: List[Dict[str, Any]]) -> List[AgentWrapper]:
         """Create agents from model-generated specifications.
         
@@ -29,11 +87,15 @@ class ModelAgentFactory:
             persona_template = self.registry.get_persona(agent_name)
             
             if persona_template:
-                # Use registered persona
+                # Resolve tool names to actual tool instances
+                tools = self._resolve_tools(persona_template.tools)
+                
+                # Use registered persona with resolved tools
                 strands_agent = create_agent(
                     name=agent_name,
                     system_prompt=persona_template.system_prompt,
-                    temperature=persona_template.temperature
+                    temperature=persona_template.temperature,
+                    tools=tools  # Use resolved tools
                 )
                 
                 expertise_level = self._get_expertise_level_from_template(persona_template)

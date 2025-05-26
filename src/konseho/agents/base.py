@@ -71,7 +71,9 @@ class AgentWrapper:
                 
                 # Now print the captured output all at once
                 if captured_output:
-                    print(f"\n[{self.name}]:\n{captured_output}", end='')
+                    print(f"\n[{self.name}]:")
+                    print(captured_output, end='')
+                    sys.stdout.flush()  # Ensure output is displayed immediately
                 
         else:
             # Non-buffered execution
@@ -204,6 +206,18 @@ def create_agent(**config) -> Agent:
     if model is None:
         from konseho.config import create_model_from_config
         model = create_model_from_config()
+    elif isinstance(model, str):
+        # If model is a string (like "claude-opus-4-20250514"), create proper model object
+        from konseho.config import create_model_from_config, ModelConfig, get_model_config
+        base_config = get_model_config()
+        # Override just the model_id
+        model_config = ModelConfig(
+            provider=base_config.provider,
+            model_id=model,
+            api_key=base_config.api_key,
+            additional_args=base_config.additional_args
+        )
+        model = create_model_from_config(model_config)
     
     tools = config.get('tools', [])
     name = config.get('name', 'agent')
@@ -211,7 +225,10 @@ def create_agent(**config) -> Agent:
     # Create Strands agent with system prompt if provided
     agent_args = {
         'model': model,
-        'tools': tools
+        'tools': tools,
+        # Always set callback_handler to prevent default PrintingCallbackHandler
+        # which conflicts with our buffering in AgentWrapper
+        'callback_handler': config.get('callback_handler', None)
     }
     
     # Add system prompt to agent creation if provided

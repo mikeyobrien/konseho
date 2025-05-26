@@ -11,6 +11,7 @@ from .core.council import Council
 from .core.steps import DebateStep
 from .agents.base import AgentWrapper
 from .dynamic.builder import DynamicCouncilBuilder
+from .core.output_manager import OutputManager
 
 # Configure logging to suppress httpx debug messages
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -32,6 +33,9 @@ Usage:
     python -m konseho -p "your query"        # Run single query (non-interactive)
     python -m konseho --dynamic -p "query"   # Single query with dynamic council
     python -m konseho -p "query" -q          # Single query with minimal output
+    python -m konseho --dynamic --analyzer-model claude-3-haiku-20240307  # Specify analyzer model
+    python -m konseho --save                 # Save outputs to default directory
+    python -m konseho --save --output-dir results  # Save outputs to custom directory
     
 Available Councils:
     example      - Basic debate council with Explorer, Planner, and Coder
@@ -106,33 +110,46 @@ def create_example_council() -> Council:
     )
 
 
-async def run_interactive_chat(council: Optional[Council] = None, dynamic_mode: bool = False):
-    """Run the interactive chat interface."""
+async def run_interactive_chat(council: Optional[Council] = None, dynamic_mode: bool = False, analyzer_model: Optional[str] = None, save_outputs: bool = False, output_dir: Optional[str] = None):
+    """Run the interactive chat interface.
+    
+    Args:
+        council: Pre-built council to use (if not dynamic mode)
+        dynamic_mode: Whether to use dynamic council creation
+        analyzer_model: Model to use for query analysis in dynamic mode
+    """
     if council is None and not dynamic_mode:
         council = create_example_council()
     
-    chat = ChatInterface(use_rich=True)
+    chat = ChatInterface(use_rich=True, save_outputs=save_outputs, output_dir=output_dir)
     
     if dynamic_mode:
         print("\n🧠 Dynamic Council Mode: I'll create specialized agents for each task.")
         print("The council composition will be optimized based on your query.")
+        if analyzer_model:
+            print(f"Using analyzer model: {analyzer_model}")
     else:
         print("\n💡 Tip: The council will work together to solve your tasks.")
     print("Type 'quit' to exit.\n")
     
     if dynamic_mode:
         # Create a custom chat session for dynamic mode
-        await run_dynamic_chat_session(chat)
+        await run_dynamic_chat_session(chat, analyzer_model=analyzer_model, save_outputs=save_outputs, output_dir=output_dir)
     else:
         await chat.interactive_session(council)
 
 
-async def run_dynamic_chat_session(chat: ChatInterface):
-    """Run chat session with dynamic council creation for each query."""
+async def run_dynamic_chat_session(chat: ChatInterface, analyzer_model: Optional[str] = None, save_outputs: bool = False, output_dir: Optional[str] = None):
+    """Run chat session with dynamic council creation for each query.
+    
+    Args:
+        chat: Chat interface to use
+        analyzer_model: Model to use for query analysis (defaults to config)
+    """
     chat.display_welcome()
     
-    # Dynamic builder will use the default model from config
-    builder = DynamicCouncilBuilder(verbose=True)
+    # Dynamic builder with optional analyzer model
+    builder = DynamicCouncilBuilder(verbose=True, analyzer_model=analyzer_model)
     
     while True:
         try:
@@ -147,7 +164,7 @@ async def run_dynamic_chat_session(chat: ChatInterface):
             
             # Create dynamic council for this query
             print("\n🔍 Analyzing your request...")
-            council = await builder.build(task)
+            council = await builder.build(task, save_outputs=save_outputs, output_dir=output_dir)
             
             # Subscribe to council events
             if hasattr(council, '_event_emitter'):
@@ -175,15 +192,23 @@ async def run_dynamic_chat_session(chat: ChatInterface):
         print("\nGoodbye!")
 
 
-async def run_single_query(prompt: str, council: Optional[Council] = None, dynamic_mode: bool = False, quiet: bool = False):
-    """Run a single query and exit."""
+async def run_single_query(prompt: str, council: Optional[Council] = None, dynamic_mode: bool = False, quiet: bool = False, analyzer_model: Optional[str] = None, save_outputs: bool = False, output_dir: Optional[str] = None):
+    """Run a single query and exit.
+    
+    Args:
+        prompt: The query to run
+        council: Pre-built council to use (if not dynamic mode)
+        dynamic_mode: Whether to use dynamic council creation
+        quiet: Whether to suppress verbose output
+        analyzer_model: Model to use for query analysis in dynamic mode
+    """
     
     try:
         if dynamic_mode:
             # Create dynamic council for this query
             print("\n🔍 Analyzing your request...")
-            builder = DynamicCouncilBuilder(verbose=False)  # Less verbose for single query
-            council = await builder.build(prompt)
+            builder = DynamicCouncilBuilder(verbose=False, analyzer_model=analyzer_model)  # Less verbose for single query
+            council = await builder.build(prompt, save_outputs=save_outputs, output_dir=output_dir)
         
         # For single query mode, we want minimal output
         # Only subscribe to key events
@@ -284,6 +309,17 @@ def main():
     # Check for quiet mode (less verbose output)
     quiet_mode = "-q" in args or "--quiet" in args
     
+    # Check for output saving options
+    save_outputs = "--save" in args or "-s" in args
+    output_dir = None
+    if "--output-dir" in args:
+        dir_index = args.index("--output-dir")
+        if dir_index + 1 < len(args):
+            output_dir = args[dir_index + 1]
+        else:
+            print("❌ Error: --output-dir requires a directory argument")
+            return
+    
     # Validate prompt if provided
     if prompt is not None and not prompt.strip():
         print("❌ Error: Prompt cannot be empty")
@@ -312,6 +348,17 @@ def main():
     council_type = "balanced"  # default
     council = None
     dynamic_mode = False
+    analyzer_model = None
+    
+    # Check for analyzer model argument
+    if "--analyzer-model" in args:
+        model_index = args.index("--analyzer-model")
+        if model_index + 1 < len(args):
+            analyzer_model = args[model_index + 1]
+        else:
+            print("❌ Error: --analyzer-model requires a model name argument")
+            print("Usage: konseho --dynamic --analyzer-model claude-3-haiku-20240307")
+            return
     
     # Check for dynamic mode first
     if "--dynamic" in args:
@@ -337,13 +384,17 @@ def main():
             # Non-interactive dynamic mode
             print("🏛️  Konseho - Dynamic Council Mode")
             print("=" * 50)
-            asyncio.run(run_single_query(prompt, council=None, dynamic_mode=True, quiet=quiet_mode))
+            asyncio.run(run_single_query(prompt, council=None, dynamic_mode=True, quiet=quiet_mode, analyzer_model=analyzer_model, save_outputs=save_outputs, output_dir=output_dir))
         else:
             print("Using dynamic council mode...")
             # Start the chat with dynamic mode
-            asyncio.run(run_interactive_chat(council=None, dynamic_mode=True))
+            asyncio.run(run_interactive_chat(council=None, dynamic_mode=True, analyzer_model=analyzer_model, save_outputs=save_outputs, output_dir=output_dir))
     elif council_type == "example":
         council = create_example_council()
+        # Set output saving if requested
+        if save_outputs:
+            council.save_outputs = True
+            council.output_manager = OutputManager(output_dir or "council_outputs")
         if prompt:
             # Non-interactive mode
             print("🏛️  Konseho - Example Council")

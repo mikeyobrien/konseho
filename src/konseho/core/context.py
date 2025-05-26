@@ -57,8 +57,8 @@ class Context:
     def to_prompt_context(self, max_length: int = 2000) -> str:
         """Convert context to a string suitable for LLM prompts."""
         summary = {
-            "current_data": self._data,
-            "recent_results": dict(list(self._results.items())[-3:])  # Last 3 results
+            "current_data": self._serialize_data(self._data),
+            "recent_results": self._serialize_data(dict(list(self._results.items())[-3:]))  # Last 3 results
         }
         
         context_str = json.dumps(summary, indent=2)
@@ -67,6 +67,28 @@ class Context:
             context_str = context_str[:max_length] + "..."
         
         return f"Current Context:\n{context_str}"
+    
+    def _serialize_data(self, data: Any) -> Any:
+        """Recursively serialize data, converting non-serializable objects."""
+        if isinstance(data, dict):
+            return {k: self._serialize_data(v) for k, v in data.items()}
+        elif isinstance(data, list):
+            return [self._serialize_data(item) for item in data]
+        elif isinstance(data, tuple):
+            return [self._serialize_data(item) for item in data]
+        elif hasattr(data, '__dict__'):
+            # Handle objects with __dict__
+            return str(data)
+        elif hasattr(data, 'value'):
+            # Handle enums
+            return data.value
+        else:
+            # Try to serialize, fall back to string representation
+            try:
+                json.dumps(data)
+                return data
+            except (TypeError, ValueError):
+                return str(data)
     
     def clear(self) -> None:
         """Clear all context data."""

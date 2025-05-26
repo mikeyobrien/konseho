@@ -3,12 +3,14 @@
 from typing import List, Optional, Any, Dict, Union
 import asyncio
 import logging
+from pathlib import Path
 
 from strands import Agent
 from .context import Context
 from .steps import Step, DebateStep
 from ..agents.base import AgentWrapper
 from ..execution.events import EventEmitter
+from .output_manager import OutputManager
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +25,9 @@ class Council:
         agents: Optional[List[Union[Agent, AgentWrapper]]] = None,
         context: Optional[Context] = None,
         error_strategy: str = "halt",
-        workflow: str = "sequential"
+        workflow: str = "sequential",
+        save_outputs: bool = False,
+        output_dir: Optional[Union[str, Path]] = None
     ):
         """Initialize a council.
         
@@ -34,12 +38,16 @@ class Council:
             context: Shared context (created if not provided)
             error_strategy: How to handle errors (halt, continue, retry, fallback)
             workflow: Workflow type (sequential, iterative)
+            save_outputs: Whether to automatically save outputs
+            output_dir: Directory for saving outputs (default: "council_outputs")
         """
         self.name = name
         self.context = context or Context()
         self.error_strategy = error_strategy
         self.workflow = workflow
         self._event_emitter = EventEmitter()
+        self.save_outputs = save_outputs
+        self.output_manager = OutputManager(output_dir or "council_outputs") if save_outputs else None
         
         # Handle initialization with agents or steps
         if steps is not None:
@@ -92,6 +100,31 @@ class Council:
             
             final_result = self.context.get_summary()
             self._event_emitter.emit("council:complete", {"result": final_result})
+            
+            # Save output if enabled
+            if self.save_outputs and self.output_manager:
+                try:
+                    # Collect metadata
+                    metadata = {
+                        "error_strategy": self.error_strategy,
+                        "workflow": self.workflow,
+                        "num_steps": len(self.steps),
+                        "agents": self._get_agent_names()
+                    }
+                    
+                    # Save both JSON and formatted versions
+                    output_path = self.output_manager.save_formatted_output(
+                        task=task,
+                        result=final_result,
+                        council_name=self.name,
+                        metadata=metadata
+                    )
+                    
+                    logger.info(f"Council output saved to: {output_path}")
+                    self._event_emitter.emit("output:saved", {"path": str(output_path)})
+                except Exception as e:
+                    logger.error(f"Failed to save output: {e}")
+            
             return final_result
             
         except Exception as e:
@@ -112,6 +145,26 @@ class Council:
         # For now, just execute normally
         result = await self.execute(task)
         yield {"type": "complete", "result": result}
+    
+    def add_step(self, step: Step) -> None:
+        """Add a step to the council workflow.
+        
+        Args:
+            step: The step to add
+        """
+        self.steps.append(step)
+    
+    def _get_agent_names(self) -> List[str]:
+        """Get names of all agents in the council."""
+        agent_names = []
+        for step in self.steps:
+            if hasattr(step, 'agents'):
+                for agent in step.agents:
+                    if hasattr(agent, 'name'):
+                        agent_names.append(agent.name)
+                    else:
+                        agent_names.append(str(agent))
+        return list(set(agent_names))  # Remove duplicates
     
     def handle_error(self, error: Exception, context: Context) -> None:
         """Handle errors according to the configured strategy.

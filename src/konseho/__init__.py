@@ -24,6 +24,10 @@ from .execution.executor import AsyncExecutor
 # Interface exports
 from .interface.chat import ChatInterface
 
+# Dynamic council exports
+from .dynamic.builder import DynamicCouncilBuilder, create_dynamic_council
+from .dynamic.analyzer import QueryAnalyzer, TaskType
+
 __version__ = "0.1.0"
 
 __all__ = [
@@ -42,4 +46,9 @@ __all__ = [
     "AsyncExecutor",
     # Interface
     "ChatInterface",
+    # Dynamic
+    "DynamicCouncilBuilder",
+    "create_dynamic_council",
+    "QueryAnalyzer",
+    "TaskType",
 ]

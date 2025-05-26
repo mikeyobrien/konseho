@@ -1,0 +1,69 @@
+{
+  "mcpServers": {
+    "oura": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "oura-mcp"
+      ],
+      "env": {
+        "OURA_ACCESS_TOKEN": "ISCH6OWOS5ETJ2YYYMPCJ7Z5QPVLSLGQ"
+      }
+    },
+    "brave-search": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-brave-search"
+      ],
+      "env": {
+        "BRAVE_API_KEY": "BSAR_j12CEjJNdIN5lE3ht6h6r2YtTM"
+      }
+    },
+    "github": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-github"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "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"
+      }
+    },
+    "firecrawl-mcp-server": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "firecrawl-mcp"
+      ],
+      "env": {
+        "FIRECRAWL_API_KEY": "fc-5a996d1b5d994e0286ff1d12e2bba617"
+      }
+    },
+    "mcp-server-kubernetes": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-server-kubernetes"
+      ]
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/Users/mobrienv/Desktop",
+        "/Users/mobrienv/Downloads"
+      ]
+    },
+    "garmin": {
+      "command": "/Users/mobrienv/mcp-servers/garmin_mcp/venv/bin/python",
+      "args": [
+        "/Users/mobrienv/mcp-servers/garmin_mcp/garmin_mcp_server.py"
+      ],
+      "env": {
+        "GARMINTOKENS": "/Users/mobrienv/.garth_dir"
+      }
+    }
+  }
+}

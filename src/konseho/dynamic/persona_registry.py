@@ -26,6 +26,7 @@ class PersonaRegistry:
     
     def _initialize_default_personas(self):
         """Initialize the registry with default personas."""
+        # Don't import tools at initialization time - they will be resolved at agent creation
         # Technical personas
         self.register(PersonaTemplate(
             name="Security Expert",
@@ -109,8 +110,10 @@ Challenge assumptions and propose bold ideas.""",
             description="Analyzes data and provides evidence-based insights",
             system_prompt="""You are a data analyst who makes decisions based on evidence.
 Focus on: data patterns, statistical analysis, metrics interpretation, and data-driven recommendations.
-Support arguments with concrete data and examples.""",
-            temperature=0.5
+Support arguments with concrete data and examples.
+Use the web_search tool to find relevant statistics and benchmarks.""",
+            temperature=0.5,
+            tools=["web_search"]  # Tool names to be resolved at agent creation time
         ))
         
         self.register(PersonaTemplate(
@@ -134,8 +137,10 @@ Consider both technical and business risks.""",
             description="Evaluates business impact and strategic alignment",
             system_prompt="""You are a business strategist focused on commercial viability.
 Focus on: market fit, competitive advantage, ROI, strategic alignment, and business growth.
-Balance technical excellence with business needs.""",
-            temperature=0.7
+Balance technical excellence with business needs.
+Use the web_search tool to research market trends and competitive landscape.""",
+            temperature=0.7,
+            tools=["web_search"]  # Tool names to be resolved at agent creation time
         ))
         
         self.register(PersonaTemplate(
@@ -159,8 +164,10 @@ Balance user value with development effort.""",
             description="Conducts comprehensive research and synthesis",
             system_prompt="""You are a research lead conducting systematic investigation.
 Focus on: comprehensive coverage, source credibility, information synthesis, and key insights.
-Present findings clearly with supporting evidence.""",
-            temperature=0.7
+Present findings clearly with supporting evidence.
+Use the web_search tool to find current information when needed.""",
+            temperature=0.7,
+            tools=["web_search"]  # Tool names to be resolved at agent creation time
         ))
         
         self.register(PersonaTemplate(
@@ -171,8 +178,10 @@ Present findings clearly with supporting evidence.""",
             description="Provides deep domain-specific expertise",
             system_prompt="""You are a domain expert with deep specialized knowledge.
 Focus on: technical accuracy, industry best practices, emerging trends, and expert insights.
-Share nuanced understanding of your domain.""",
-            temperature=0.6
+Share nuanced understanding of your domain.
+Use the web_search tool to verify current information and trends.""",
+            temperature=0.6,
+            tools=["web_search"]  # Tool names to be resolved at agent creation time
         ))
         
         # General personas
