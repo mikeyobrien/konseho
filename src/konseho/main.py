@@ -244,9 +244,13 @@ async def run_single_query(prompt: str, council: Council | None = None, dynamic_
             step_results = result["results"]
             # Get the last step's result
             last_step_key = sorted([k for k in step_results.keys() if k.startswith("step_")])[-1] if step_results else None
-            if last_step_key and isinstance(step_results[last_step_key], dict):
+            if last_step_key:
                 step_result = step_results[last_step_key]
-                if "winner" in step_result:
+                # Handle StepResult objects
+                if hasattr(step_result, 'output'):
+                    final_answer = step_result.output
+                # Handle legacy dict format
+                elif isinstance(step_result, dict) and "winner" in step_result:
                     final_answer = step_result["winner"]
         
         if final_answer:

@@ -86,6 +86,31 @@ class ChatInterface:
     def _display_step_result(self, step_result: Any) -> None:
         """Display the result of a single step."""
         try:
+            # Handle StepResult objects - convert to dict for display logic
+            if hasattr(step_result, 'output') and hasattr(step_result, 'metadata'):
+                # For debate results, put winner in the expected place
+                if 'winner' in step_result.metadata:
+                    step_dict = {
+                        'winner': step_result.output,  # output contains the winner
+                        'proposals': step_result.metadata.get('proposals', {}),
+                        'votes': step_result.metadata.get('votes', {})
+                    }
+                    step_result = step_dict
+                # For parallel results
+                elif 'parallel_results' in step_result.metadata:
+                    step_result = {'parallel_results': step_result.metadata['parallel_results']}
+                # For other results, just display the output
+                else:
+                    if self.use_rich:
+                        self.console.print("\n[bold]Step Result:[/bold]")
+                        self.console.print(Panel(step_result.output, border_style="blue"))
+                    else:
+                        print("\nStep Result:")
+                        print("-" * 50)
+                        print(step_result.output)
+                        print("-" * 50)
+                    return
+            
             # For debate step results
             if isinstance(step_result, dict) and 'winner' in step_result:
                 winner = self._extract_text_content(step_result.get('winner', 'No winner selected'))

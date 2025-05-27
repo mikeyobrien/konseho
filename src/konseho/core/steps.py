@@ -40,7 +40,7 @@ class Step(ABC):
         return self.__class__.__name__
     
     @abstractmethod
-    async def execute(self, task: str, context: Context) -> dict[str, Any]:
+    async def execute(self, task: str, context: Context) -> StepResult:
         """Execute the step with given task and context."""
         pass
     
@@ -327,7 +327,7 @@ class DebateStep(Step):
         # Vote or select winner
         winner_data = await self._select_winner(proposals, all_proposals, task, context)
         
-        result = {
+        metadata = {
             "winner": winner_data["winner"],
             "proposals": proposals,
             "strategy": self.voting_strategy
@@ -335,22 +335,26 @@ class DebateStep(Step):
         
         # Add strategy-specific data
         if "votes" in winner_data:
-            result["votes"] = winner_data["votes"]
+            metadata["votes"] = winner_data["votes"]
         if "abstentions" in winner_data:
-            result["abstentions"] = winner_data["abstentions"]
-            result["total_votes"] = sum(winner_data["votes"].values())
+            metadata["abstentions"] = winner_data["abstentions"]
+            metadata["total_votes"] = sum(winner_data["votes"].values())
         if "tie" in winner_data:
-            result["tie"] = winner_data["tie"]
-            result["tie_resolution"] = winner_data.get("tie_resolution", "first_proposal")
+            metadata["tie"] = winner_data["tie"]
+            metadata["tie_resolution"] = winner_data.get("tie_resolution", "first_proposal")
         if "weighted_scores" in winner_data:
-            result["weighted_scores"] = winner_data["weighted_scores"]
+            metadata["weighted_scores"] = winner_data["weighted_scores"]
         if "selected_by" in winner_data:
-            result["selected_by"] = winner_data["selected_by"]
+            metadata["selected_by"] = winner_data["selected_by"]
         if self.voting_strategy == "consensus":
-            result["consensus_reached"] = consensus_reached
-            result["rounds_to_consensus"] = rounds_to_consensus
+            metadata["consensus_reached"] = consensus_reached
+            metadata["rounds_to_consensus"] = rounds_to_consensus
         
-        return result
+        # Return StepResult with winner as the output
+        return StepResult(
+            output=winner_data["winner"],
+            metadata=metadata
+        )
     
     async def _get_proposal(self, agent: AgentWrapper, prompt: str) -> str:
         """Get a proposal from an agent."""
@@ -436,7 +440,7 @@ class ParallelStep(Step):
         self.agents = agents
         self.task_splitter = task_splitter
     
-    async def execute(self, task: str, context: Context) -> dict[str, Any]:
+    async def execute(self, task: str, context: Context) -> StepResult:
         """Execute agents in parallel."""
         if self.task_splitter:
             subtasks = self.task_splitter(task, len(self.agents))
@@ -452,12 +456,24 @@ class ParallelStep(Step):
         
         results = await asyncio.gather(*tasks)
         
-        return {
-            "parallel_results": {
-                agent.name: result for agent, result in zip(self.agents, results, strict=False)
-            },
-            "execution_time": "parallel"
+        # Combine results into a single output
+        parallel_results = {
+            agent.name: result for agent, result in zip(self.agents, results, strict=False)
         }
+        
+        # Create a summary output
+        output_lines = ["Parallel execution results:"]
+        for agent_name, result in parallel_results.items():
+            output_lines.append(f"\n[{agent_name}]:\n{result}")
+        
+        return StepResult(
+            output="\n".join(output_lines),
+            metadata={
+                "parallel_results": parallel_results,
+                "execution_time": "parallel",
+                "agents_involved": [agent.name for agent in self.agents]
+            }
+        )
 
 
 class SplitStep(Step):
@@ -483,7 +499,7 @@ class SplitStep(Step):
         self.max_agents = max_agents
         self.split_strategy = split_strategy
     
-    async def execute(self, task: str, context: Context) -> dict[str, Any]:
+    async def execute(self, task: str, context: Context) -> StepResult:
         """Execute with dynamically created agents."""
         # Determine number of agents needed
         num_agents = self._determine_agent_count(task, context)
@@ -505,11 +521,20 @@ class SplitStep(Step):
         
         results = await asyncio.gather(*tasks)
         
-        return {
-            "split_results": results,
-            "num_agents": num_agents,
-            "strategy": self.split_strategy
-        }
+        # Combine results into a coherent output
+        output_lines = [f"Split across {num_agents} agents:"]
+        for i, (agent, result) in enumerate(zip(agents, results, strict=False)):
+            output_lines.append(f"\n[Agent {i+1}]:\n{result}")
+        
+        return StepResult(
+            output="\n".join(output_lines),
+            metadata={
+                "split_results": results,
+                "num_agents": num_agents,
+                "strategy": self.split_strategy,
+                "subtasks": subtasks
+            }
+        )
     
     def _determine_agent_count(self, task: str, context: Context) -> int:
         """Determine how many agents to create based on task complexity."""
