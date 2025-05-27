@@ -99,15 +99,21 @@ class DynamicCouncilBuilder:
         context.add("query_analysis", analysis)
         context.add("original_query", query)
         
-        # Create and configure council
-        # Don't pass agents to avoid auto-creating a DebateStep
-        council = Council(
+        # Import factory for creating council
+        from ..factories import CouncilFactory
+        
+        # Create and configure council using factory
+        factory = CouncilFactory()
+        council = factory.create_council(
             name="DynamicCouncil",
             steps=steps,  # Pass steps directly
-            context=context,
             save_outputs=save_outputs,
             output_dir=output_dir
         )
+        
+        # Update council's context with analysis data
+        council.context.add("query_analysis", analysis)
+        council.context.add("original_query", query)
         
         return council
     

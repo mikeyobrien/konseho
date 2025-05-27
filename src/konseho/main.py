@@ -68,6 +68,7 @@ def create_example_council() -> Council:
     # Import here to avoid circular imports
     from .agents.base import create_agent
     from .personas import CODER_PROMPT, EXPLORER_PROMPT, PLANNER_PROMPT
+    from .factories import CouncilFactory
     
     # Create agents with distinct personas
     explorer = AgentWrapper(
@@ -97,7 +98,9 @@ def create_example_council() -> Council:
         name="Coder"
     )
     
-    return Council(
+    # Use factory to create council
+    factory = CouncilFactory()
+    return factory.create_council(
         name="ExampleCouncil",
         steps=[
             DebateStep(
