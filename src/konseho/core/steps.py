@@ -22,6 +22,24 @@ class Step(ABC):
     async def execute(self, task: str, context: Context) -> Dict[str, Any]:
         """Execute the step with given task and context."""
         pass
+    
+    def _build_prompt_with_time(self, task: str, context: Context = None) -> str:
+        """Build a prompt that includes current time and context."""
+        from datetime import datetime
+        
+        # Always include current time
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        time_info = f"Current date and time: {current_time}"
+        
+        # Build full prompt
+        parts = [time_info]
+        
+        if context and context.to_prompt_context():
+            parts.append(context.to_prompt_context())
+        
+        parts.append(f"Task: {task}")
+        
+        return "\n\n".join(parts)
 
 
 class DebateStep(Step):
@@ -49,7 +67,10 @@ class DebateStep(Step):
     
     async def _collect_votes(self, proposals: Dict[str, str]) -> Tuple[Dict[str, str], int]:
         """Collect votes from all agents."""
-        voting_prompt = "Vote for the best proposal. Reply with 'I vote for: [proposal name]' or 'I abstain from voting'\n\n"
+        from datetime import datetime
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        voting_prompt = f"Current date and time: {current_time}\n\nVote for the best proposal. Reply with 'I vote for: [proposal name]' or 'I abstain from voting'\n\n"
         for name, proposal in proposals.items():
             # Handle proposals that might be shorter than 200 chars
             if len(proposal) > 200:
@@ -219,7 +240,7 @@ class DebateStep(Step):
         # Initial proposals
         proposal_tasks = []
         for agent in self.agents:
-            prompt = f"{task}\n\n{context.to_prompt_context()}"
+            prompt = self._build_prompt_with_time(task, context)
             proposal_tasks.append(self._get_proposal(agent, prompt))
         
         initial_proposals = await asyncio.gather(*proposal_tasks)
@@ -236,7 +257,10 @@ class DebateStep(Step):
             
             debate_tasks = []
             for agent in self.agents:
-                prompt = f"{debate_context}\n\nProvide your updated proposal or critique others."
+                # Include current time in debate prompts too
+                from datetime import datetime
+                current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                prompt = f"Current date and time: {current_time}\n\n{debate_context}\n\nProvide your updated proposal or critique others."
                 debate_tasks.append(self._get_proposal(agent, prompt))
             
             round_responses = await asyncio.gather(*debate_tasks)
@@ -312,7 +336,10 @@ class DebateStep(Step):
         original_proposals = {k: v for k, v in proposals.items() if "_round_" not in k}
         
         if self.voting_strategy == "moderator" and self.moderator:
-            prompt = f"Select the best proposal for: {task}\n\nProposals:\n"
+            from datetime import datetime
+            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
+            prompt = f"Current date and time: {current_time}\n\nSelect the best proposal for: {task}\n\nProposals:\n"
             for name, proposal in original_proposals.items():
                 # Handle proposals that might be shorter than 300 chars
                 if len(proposal) > 300:
@@ -372,7 +399,7 @@ class ParallelStep(Step):
         # Execute all agents in parallel
         tasks = []
         for agent, subtask in zip(self.agents, subtasks):
-            prompt = f"{subtask}\n\n{context.to_prompt_context()}"
+            prompt = self._build_prompt_with_time(subtask, context)
             tasks.append(agent.work_on(prompt))
         
         results = await asyncio.gather(*tasks)
@@ -425,7 +452,7 @@ class SplitStep(Step):
         # Execute in parallel
         tasks = []
         for agent, subtask in zip(agents, subtasks):
-            prompt = f"{subtask}\n\n{context.to_prompt_context()}"
+            prompt = self._build_prompt_with_time(subtask, context)
             tasks.append(agent.work_on(prompt))
         
         results = await asyncio.gather(*tasks)

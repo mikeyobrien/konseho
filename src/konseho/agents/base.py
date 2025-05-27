@@ -231,9 +231,18 @@ def create_agent(**config) -> Agent:
         'callback_handler': config.get('callback_handler', None)
     }
     
-    # Add system prompt to agent creation if provided
+    # Always inject current date/time information
+    from datetime import datetime
+    current_datetime = datetime.now()
+    date_info = f"\n\nCurrent date and time: {current_datetime.strftime('%Y-%m-%d %H:%M:%S')}"
+    
+    # Add system prompt to agent creation
     if 'system_prompt' in config:
-        agent_args['system_prompt'] = config['system_prompt']
+        # Append date info to existing system prompt
+        agent_args['system_prompt'] = config['system_prompt'] + date_info
+    else:
+        # Create minimal system prompt with just date info
+        agent_args['system_prompt'] = f"You are a helpful AI assistant.{date_info}"
     
     # Create agent with all args
     agent = Agent(**agent_args)

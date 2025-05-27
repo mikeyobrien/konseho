@@ -34,6 +34,40 @@ class ChatInterface:
         
         self._event_log = []
     
+    def _extract_text_content(self, content: Any) -> str:
+        """Extract text from various agent response formats."""
+        if isinstance(content, str):
+            # Try to parse as JSON first
+            try:
+                import json
+                parsed = json.loads(content)
+                # Recursively extract from parsed content
+                return self._extract_text_content(parsed)
+            except (json.JSONDecodeError, ValueError):
+                # Not JSON, return as-is
+                return content
+        elif isinstance(content, list):
+            # Handle [{'text': '...'}] format
+            if content and isinstance(content[0], dict) and 'text' in content[0]:
+                return content[0]['text']
+            # Handle list of strings
+            elif content and isinstance(content[0], str):
+                return content[0]
+            else:
+                return str(content)
+        elif isinstance(content, dict):
+            # Handle {'text': '...'} format
+            if 'text' in content:
+                return content['text']
+            elif 'content' in content:
+                return self._extract_text_content(content['content'])
+            elif 'message' in content:
+                return content['message']
+            else:
+                return str(content)
+        else:
+            return str(content)
+    
     def display_welcome(self) -> None:
         """Display welcome message."""
         if self.use_rich:
@@ -55,58 +89,79 @@ class ChatInterface:
         try:
             # For debate step results
             if isinstance(step_result, dict) and 'winner' in step_result:
-                winner = step_result.get('winner', 'No winner selected')
+                winner = self._extract_text_content(step_result.get('winner', 'No winner selected'))
                 proposals = step_result.get('proposals', {})
                 votes = step_result.get('votes', {})
                 
                 if self.use_rich:
-                    self.console.print("\n[bold cyan]Council Debate Results:[/bold cyan]")
+                    self.console.print("\n[bold cyan]🎯 Council Debate Results[/bold cyan]")
                     
-                    # Extract proposals into a list format
-                    proposal_list = []
+                    # Only show initial proposals (not debate rounds)
+                    initial_proposals = {}
                     for key, value in proposals.items():
-                        agent_name = key.split('_round_')[0] if '_round_' in key else key
-                        proposal_list.append({'agent': agent_name, 'text': value})
+                        if '_round_' not in key:  # Skip debate rounds
+                            agent_name = key
+                            text_content = self._extract_text_content(value)
+                            initial_proposals[agent_name] = text_content
                     
-                    # Display all proposals  
-                    self.console.print("\n[bold]All Proposals:[/bold]")
-                    for proposal in proposal_list:
-                        agent_name = proposal.get('agent', 'Unknown')
-                        text = proposal.get('text', 'No text provided')
-                        vote_count = votes.get(agent_name, 0)
-                        
-                        # Truncate long texts but show more than before
-                        display_text = text[:800] + "..." if len(text) > 800 else text
-                        
-                        self.console.print(f"\n[yellow]→ {agent_name}[/yellow] (Votes: {vote_count})")
-                        self.console.print(Panel(display_text, border_style="yellow"))
+                    # Display initial proposals with better formatting
+                    if initial_proposals:
+                        self.console.print("\n[bold]Initial Proposals:[/bold]")
+                        for agent_name, text_content in initial_proposals.items():
+                            vote_count = votes.get(agent_name, 0)
+                            
+                            # Show first 500 chars as preview
+                            if len(text_content) > 500:
+                                # Find a good break point (end of sentence/paragraph)
+                                preview = text_content[:500]
+                                last_period = preview.rfind('.')
+                                last_newline = preview.rfind('\n')
+                                break_point = max(last_period, last_newline)
+                                if break_point > 300:
+                                    preview = preview[:break_point + 1]
+                                preview += "\n\n[dim]... (truncated for brevity)[/dim]"
+                            else:
+                                preview = text_content
+                            
+                            self.console.print(f"\n[yellow]→ {agent_name}[/yellow] [dim](Votes: {vote_count})[/dim]")
+                            self.console.print(Panel(preview, border_style="yellow", padding=(1, 2)))
                     
-                    # Display winner - NEVER truncate
-                    self.console.print("\n[bold green]✓ Winner:[/bold green]")
-                    self.console.print(Panel(winner, border_style="green"))
+                    # Display winner with full content - NO TRUNCATION
+                    self.console.print("\n[bold green]✅ Winning Approach:[/bold green]")
+                    self.console.print(Panel(winner, border_style="green", padding=(1, 2)))
                 else:
-                    print("\nCouncil Debate Results:")
+                    print("\n🎯 Council Debate Results")
                     print("=" * 70)
                     
-                    # Extract and display proposals
-                    proposal_list = []
+                    # Only show initial proposals (not debate rounds)
+                    initial_proposals = {}
                     for key, value in proposals.items():
-                        agent_name = key.split('_round_')[0] if '_round_' in key else key
-                        proposal_list.append({'agent': agent_name, 'text': value})
+                        if '_round_' not in key:  # Skip debate rounds
+                            agent_name = key
+                            text_content = self._extract_text_content(value)
+                            initial_proposals[agent_name] = text_content
                     
-                    print("\nAll Proposals:")
-                    for proposal in proposal_list:
-                        agent_name = proposal.get('agent', 'Unknown')
-                        text = proposal.get('text', 'No text provided')
-                        vote_count = votes.get(agent_name, 0)
-                        
-                        print(f"\n→ {agent_name} (Votes: {vote_count})")
-                        print("-" * 50)
-                        display_text = text[:800] + "..." if len(text) > 800 else text
-                        print(display_text)
+                    if initial_proposals:
+                        print("\nInitial Proposals:")
+                        for agent_name, text_content in initial_proposals.items():
+                            vote_count = votes.get(agent_name, 0)
+                            
+                            print(f"\n→ {agent_name} (Votes: {vote_count})")
+                            print("-" * 50)
+                            
+                            # Show preview for proposals
+                            if len(text_content) > 500:
+                                preview = text_content[:500]
+                                last_period = preview.rfind('.')
+                                if last_period > 300:
+                                    preview = preview[:last_period + 1]
+                                print(preview)
+                                print("\n... (truncated for brevity)")
+                            else:
+                                print(text_content)
                     
-                    # Display winner - NEVER truncate
-                    print("\n✓ Winner:")
+                    # Display winner - FULL CONTENT
+                    print("\n✅ Winning Approach:")
                     print("=" * 50)
                     print(winner)
                     print("=" * 70)
@@ -117,35 +172,25 @@ class ChatInterface:
                 parallel_results = step_result[results_key]
                 
                 if self.use_rich:
-                    self.console.print("\n[bold cyan]Parallel Execution Results:[/bold cyan]")
+                    self.console.print("\n[bold cyan]🔄 Parallel Agent Analysis[/bold cyan]")
                     for agent_name, agent_result in parallel_results.items():
-                        self.console.print(f"\n[yellow]→ {agent_name}:[/yellow]")
-                        # Extract text content from strands agent response format
-                        if isinstance(agent_result, dict) and 'content' in agent_result:
-                            content = agent_result['content']
-                            if isinstance(content, list) and content and isinstance(content[0], dict) and 'text' in content[0]:
-                                text = content[0]['text']
-                            else:
-                                text = str(content)
-                        else:
-                            text = str(agent_result)
-                        # Display full content without truncation
-                        self.console.print(Panel(text, border_style="yellow"))
+                        # Extract text content using our helper
+                        text = self._extract_text_content(agent_result)
+                        
+                        # Display with better formatting
+                        self.console.print(f"\n[yellow]→ {agent_name}[/yellow]")
+                        
+                        # For parallel results, show full content as they're usually more concise
+                        self.console.print(Panel(text, border_style="yellow", padding=(1, 2)))
                 else:
-                    print("\nParallel Execution Results:")
+                    print("\n🔄 Parallel Agent Analysis")
                     print("=" * 70)
                     for agent_name, agent_result in parallel_results.items():
+                        # Extract text content using our helper
+                        text = self._extract_text_content(agent_result)
+                        
                         print(f"\n→ {agent_name}:")
                         print("-" * 50)
-                        # Extract text content
-                        if isinstance(agent_result, dict) and 'content' in agent_result:
-                            content = agent_result['content']
-                            if isinstance(content, list) and content and isinstance(content[0], dict) and 'text' in content[0]:
-                                text = content[0]['text']
-                            else:
-                                text = str(content)
-                        else:
-                            text = str(agent_result)
                         print(text)
                     print("=" * 70)
             
@@ -205,14 +250,20 @@ class ChatInterface:
                 step_results = result['results']
                 if step_results:
                     # Display ALL step results, not just the first one
-                    for step_key in sorted(step_results.keys()):
-                        step_result = step_results[step_key]
+                    for i, (step_key, step_result) in enumerate(sorted(step_results.items())):
+                        # Determine step type for better description
+                        step_desc = f"Step {i + 1}"
+                        if isinstance(step_result, dict):
+                            if 'winner' in step_result:
+                                step_desc = f"Step {i + 1}: Final Decision"
+                            elif 'parallel_results' in step_result or 'results' in step_result:
+                                step_desc = f"Step {i + 1}: Agent Research & Analysis"
                         
                         # Display each step's result using the existing _display_step_result method
                         if self.use_rich:
-                            self.console.print(f"\n[bold cyan]Results from {step_key}:[/bold cyan]")
+                            self.console.print(f"\n[bold cyan]━━━ {step_desc} ━━━[/bold cyan]")
                         else:
-                            print(f"\nResults from {step_key}:")
+                            print(f"\n━━━ {step_desc} ━━━")
                         
                         self._display_step_result(step_result)
                     

@@ -134,12 +134,19 @@ class StepExecutor:
         raise last_exception
     
     def _inject_context(self, task: str, context: Context) -> str:
-        """Inject context into task prompt."""
-        if not context or not context._data and not context._results:
-            return task
+        """Inject context and current time into task prompt."""
+        from datetime import datetime
         
-        context_str = context.to_prompt_context(max_length=1000)
-        return f"{context_str}\n\nTask: {task}"
+        # Always include current time
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        time_info = f"Current date and time: {current_time}"
+        
+        # Add context if available
+        if context and (context._data or context._results):
+            context_str = context.to_prompt_context(max_length=1000)
+            return f"{time_info}\n\n{context_str}\n\nTask: {task}"
+        else:
+            return f"{time_info}\n\nTask: {task}"
 
 
 class AsyncExecutor:
