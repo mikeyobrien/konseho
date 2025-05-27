@@ -1,17 +1,16 @@
 """Output management for saving council execution results."""
 
+import hashlib
 import json
-import os
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, Any, Optional, Union, List
-import hashlib
+from typing import Any
 
 
 class OutputManager:
     """Manages saving and loading of council execution outputs."""
     
-    def __init__(self, base_dir: Union[str, Path] = "council_outputs"):
+    def __init__(self, base_dir: str | Path = "council_outputs"):
         """Initialize output manager.
         
         Args:
@@ -23,10 +22,10 @@ class OutputManager:
     def save_output(
         self,
         task: str,
-        result: Dict[str, Any],
+        result: dict[str, Any],
         council_name: str = "Council",
-        metadata: Optional[Dict[str, Any]] = None,
-        filename: Optional[str] = None
+        metadata: dict[str, Any] | None = None,
+        filename: str | None = None
     ) -> Path:
         """Save council output to a file.
         
@@ -69,10 +68,10 @@ class OutputManager:
     def save_formatted_output(
         self,
         task: str,
-        result: Dict[str, Any],
+        result: dict[str, Any],
         council_name: str = "Council",
-        metadata: Optional[Dict[str, Any]] = None,
-        filename: Optional[str] = None
+        metadata: dict[str, Any] | None = None,
+        filename: str | None = None
     ) -> Path:
         """Save council output in a human-readable format.
         
@@ -98,7 +97,7 @@ class OutputManager:
         
         # Format the output
         output_lines = [
-            f"COUNCIL EXECUTION REPORT",
+            "COUNCIL EXECUTION REPORT",
             f"{'=' * 80}",
             f"Council: {council_name}",
             f"Task: {task}",
@@ -197,7 +196,7 @@ class OutputManager:
                     
         return str(agent_result)
     
-    def list_outputs(self, council_name: Optional[str] = None) -> List[Dict[str, Any]]:
+    def list_outputs(self, council_name: str | None = None) -> list[dict[str, Any]]:
         """List all saved outputs.
         
         Args:
@@ -220,7 +219,7 @@ class OutputManager:
                 
             for json_file in council_dir.glob("*.json"):
                 try:
-                    with open(json_file, 'r') as f:
+                    with open(json_file) as f:
                         data = json.load(f)
                         outputs.append({
                             "file": str(json_file),
@@ -236,7 +235,7 @@ class OutputManager:
         outputs.sort(key=lambda x: x["timestamp"], reverse=True)
         return outputs
     
-    def load_output(self, filepath: Union[str, Path]) -> Dict[str, Any]:
+    def load_output(self, filepath: str | Path) -> dict[str, Any]:
         """Load a saved output file.
         
         Args:
@@ -245,7 +244,7 @@ class OutputManager:
         Returns:
             The loaded output data
         """
-        with open(filepath, 'r') as f:
+        with open(filepath) as f:
             return json.load(f)
     
     def cleanup_old_outputs(self, days: int = 30):
@@ -262,7 +261,7 @@ class OutputManager:
                 
             for json_file in council_dir.glob("*.json"):
                 try:
-                    with open(json_file, 'r') as f:
+                    with open(json_file) as f:
                         data = json.load(f)
                         timestamp = datetime.fromisoformat(data.get("timestamp", ""))
                         

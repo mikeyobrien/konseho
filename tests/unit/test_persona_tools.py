@@ -1,10 +1,7 @@
 """Tests for PersonaTemplate with tools support."""
 
-import pytest
-from typing import List, Any
-from dataclasses import dataclass, field
 
-from konseho.dynamic.persona_registry import PersonaTemplate, PersonaRegistry
+from konseho.dynamic.persona_registry import PersonaRegistry, PersonaTemplate
 
 
 def mock_tool_1(x: str) -> str:

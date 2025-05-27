@@ -1,6 +1,5 @@
 """Unit tests for QueryAnalyzer."""
 
-import pytest
 from konseho.dynamic.analyzer import QueryAnalyzer, TaskType
 
 

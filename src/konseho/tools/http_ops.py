@@ -1,15 +1,15 @@
 """HTTP operation tools for agents."""
 
+from typing import Any
+
 import requests
-from typing import Dict, Any, Optional
-import json as json_module
 
 
 def http_get(
     url: str,
-    headers: Optional[Dict[str, str]] = None,
+    headers: dict[str, str] | None = None,
     timeout: int = 10
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Make HTTP GET request.
     
     Args:
@@ -74,11 +74,11 @@ def http_get(
 
 def http_post(
     url: str,
-    data: Optional[Any] = None,
-    json: Optional[Any] = None,
-    headers: Optional[Dict[str, str]] = None,
+    data: Any | None = None,
+    json: Any | None = None,
+    headers: dict[str, str] | None = None,
     timeout: int = 10
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Make HTTP POST request.
     
     Args:

@@ -1,0 +1,47 @@
+{
+  "task": "Create a new product",
+  "council_name": "legacy_council",
+  "timestamp": "2025-05-27T16:50:32.526759",
+  "result": {
+    "data": {},
+    "results": {
+      "step_0": {
+        "winner": "Analyze the data",
+        "proposals": {
+          "analyst": "Analyze the data",
+          "engineer": "Build the system",
+          "designer": "Design the interface",
+          "analyst_round_0": "Analyze the data",
+          "engineer_round_0": "Build the system",
+          "designer_round_0": "Design the interface",
+          "analyst_round_1": "Analyze the data",
+          "engineer_round_1": "Build the system",
+          "designer_round_1": "Design the interface"
+        },
+        "strategy": "majority",
+        "votes": {
+          "analyst": 0,
+          "engineer": 0,
+          "designer": 0
+        },
+        "abstentions": 0,
+        "total_votes": 0
+      }
+    },
+    "metadata": {
+      "created_at": "2025-05-27T16:50:32.518038",
+      "version": "1.0.0"
+    },
+    "history_length": 1
+  },
+  "metadata": {
+    "error_strategy": "halt",
+    "workflow": "sequential",
+    "num_steps": 1,
+    "agents": [
+      "engineer",
+      "designer",
+      "analyst"
+    ]
+  }
+}

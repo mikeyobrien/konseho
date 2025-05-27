@@ -1,18 +1,17 @@
 """Shell execution tool for agents."""
 
-import subprocess
-import os
 import shlex
+import subprocess
 import sys
-from typing import Dict, Any, Optional
+from typing import Any
 
 
 def shell_run(
     command: str,
-    cwd: Optional[str] = None,
+    cwd: str | None = None,
     timeout: int = 30,
     capture_output: bool = True
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Execute shell commands with timeout and output capture.
     
     Args:
@@ -81,7 +80,7 @@ def shell_run(
     except FileNotFoundError:
         result["error"] = f"Command not found: {command.split()[0] if not use_shell else command}"
     except PermissionError:
-        result["error"] = f"Permission denied executing command"
+        result["error"] = "Permission denied executing command"
     except subprocess.SubprocessError as e:
         result["error"] = f"Subprocess error: {str(e)}"
     except Exception as e:

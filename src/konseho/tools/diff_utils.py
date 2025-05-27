@@ -1,7 +1,6 @@
 """Diff utilities for showing changes in a reviewable format."""
 
 import difflib
-from typing import List, Optional
 
 
 def generate_diff(

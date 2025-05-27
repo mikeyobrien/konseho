@@ -4,6 +4,7 @@ These adapters help bridge the gap between existing implementations
 and the new protocol interfaces, allowing for gradual migration.
 """
 
+import asyncio
 from typing import Any
 
 from konseho.agents.base import AgentWrapper
@@ -259,3 +260,83 @@ class MockStepResult(IStepResult):
     def success(self) -> bool:
         """Success status."""
         return self._success
+
+
+class MockEventEmitter:
+    """Mock event emitter for testing."""
+
+    def __init__(self):
+        """Initialize mock event emitter."""
+        self.events: list[tuple[str, Any]] = []
+        self.handlers: dict[str, list[Any]] = {}
+
+    def on(self, event: str, handler: Any) -> None:
+        """Register an event handler."""
+        if event not in self.handlers:
+            self.handlers[event] = []
+        self.handlers[event].append(handler)
+
+    def emit(self, event: str, data: Any = None) -> None:
+        """Emit an event and record it."""
+        self.events.append((event, data))
+        # Call handlers for testing
+        if event in self.handlers:
+            for handler in self.handlers[event]:
+                handler(event, data)
+
+    async def emit_async(self, event: str, data: Any = None) -> None:
+        """Emit an event asynchronously."""
+        self.events.append((event, data))
+        # Call handlers for testing
+        if event in self.handlers:
+            for handler in self.handlers[event]:
+                if asyncio.iscoroutinefunction(handler):
+                    await handler(event, data)
+                else:
+                    handler(event, data)
+
+    def get_emitted_events(self) -> list[tuple[str, Any]]:
+        """Get all emitted events for verification."""
+        return self.events
+
+    def clear(self) -> None:
+        """Clear all recorded events."""
+        self.events.clear()
+
+
+class MockOutputManager:
+    """Mock output manager for testing."""
+
+    def __init__(self):
+        """Initialize mock output manager."""
+        self.saved_outputs: list[dict[str, Any]] = []
+
+    def save_formatted_output(
+        self,
+        task: str,
+        result: Any,
+        council_name: str = "council",
+        metadata: dict[str, Any] | None = None,
+    ) -> str:
+        """Mock save output and return fake path."""
+        self.saved_outputs.append(
+            {
+                "task": task,
+                "result": result,
+                "council_name": council_name,
+                "metadata": metadata,
+            }
+        )
+        return f"/mock/outputs/{council_name}_{len(self.saved_outputs)}.json"
+
+    def clean_old_outputs(self, max_age_days: int = 7) -> int:
+        """Mock clean old outputs."""
+        # Simulate cleaning half the outputs
+        cleaned = len(self.saved_outputs) // 2
+        if cleaned > 0:
+            self.saved_outputs = self.saved_outputs[cleaned:]
+        return cleaned
+
+    def get_saved_outputs(self) -> list[dict[str, Any]]:
+        """Get all saved outputs for verification."""
+        return self.saved_outputs

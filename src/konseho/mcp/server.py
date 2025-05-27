@@ -1,16 +1,14 @@
 """MCP server management and tool discovery."""
 
-import asyncio
-import subprocess
-import os
-from typing import Dict, List, Any, Optional, Callable
-from dataclasses import dataclass
 import logging
-import json
-from pathlib import Path
+import os
+import subprocess
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any
 
 from konseho.mcp.config import MCPConfigManager, MCPServerConfig
-from konseho.tools.mcp_adapter import MCPToolAdapter, create_mcp_tool
+from konseho.tools.mcp_adapter import MCPToolAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -20,8 +18,8 @@ class MCPServerInstance:
     """Running MCP server instance."""
     name: str
     config: MCPServerConfig
-    process: Optional[subprocess.Popen] = None
-    tools: Dict[str, Callable] = None
+    process: subprocess.Popen | None = None
+    tools: dict[str, Callable] = None
     
     def __post_init__(self):
         if self.tools is None:
@@ -31,15 +29,15 @@ class MCPServerInstance:
 class MCPServerManager:
     """Manage MCP servers and their tools."""
     
-    def __init__(self, config_manager: Optional[MCPConfigManager] = None):
+    def __init__(self, config_manager: MCPConfigManager | None = None):
         """Initialize MCP server manager.
         
         Args:
             config_manager: Configuration manager. If None, creates default.
         """
         self.config_manager = config_manager or MCPConfigManager()
-        self.servers: Dict[str, MCPServerInstance] = {}
-        self._tool_registry: Dict[str, str] = {}  # tool_name -> server_name mapping
+        self.servers: dict[str, MCPServerInstance] = {}
+        self._tool_registry: dict[str, str] = {}  # tool_name -> server_name mapping
     
     async def start_server(self, name: str) -> bool:
         """Start an MCP server by name.
@@ -149,7 +147,7 @@ class MCPServerManager:
         for name in server_names:
             await self.stop_server(name)
     
-    def get_tool(self, tool_name: str) -> Optional[Callable]:
+    def get_tool(self, tool_name: str) -> Callable | None:
         """Get a specific tool by name.
         
         Args:
@@ -167,7 +165,7 @@ class MCPServerManager:
         
         return self.servers[server_name].tools.get(tool_name)
     
-    def get_tools_for_server(self, server_name: str) -> Dict[str, Callable]:
+    def get_tools_for_server(self, server_name: str) -> dict[str, Callable]:
         """Get all tools from a specific server.
         
         Args:
@@ -181,7 +179,7 @@ class MCPServerManager:
         
         return self.servers[server_name].tools.copy()
     
-    def get_all_tools(self) -> Dict[str, Callable]:
+    def get_all_tools(self) -> dict[str, Callable]:
         """Get all available tools from all running servers.
         
         Returns:
@@ -194,7 +192,7 @@ class MCPServerManager:
         
         return all_tools
     
-    def list_tools(self) -> List[Dict[str, str]]:
+    def list_tools(self) -> list[dict[str, str]]:
         """List all available tools with metadata.
         
         Returns:
@@ -232,7 +230,7 @@ class MCPServerManager:
             instance.tools[tool_name] = wrapped_tool
             self._tool_registry[tool_name] = instance.name
     
-    def _get_mock_tools(self, server_name: str) -> Dict[str, Callable]:
+    def _get_mock_tools(self, server_name: str) -> dict[str, Callable]:
         """Get mock tools for demonstration.
         
         In practice, these would be discovered from the MCP server.
@@ -272,13 +270,13 @@ class MCPToolSelector:
     
     def select_tools(
         self,
-        tool_names: Optional[List[str]] = None,
-        servers: Optional[List[str]] = None,
-        tags: Optional[List[str]] = None,
-        preset: Optional[str] = None,
-        exclude_tools: Optional[List[str]] = None,
-        exclude_servers: Optional[List[str]] = None
-    ) -> List[Callable]:
+        tool_names: list[str] | None = None,
+        servers: list[str] | None = None,
+        tags: list[str] | None = None,
+        preset: str | None = None,
+        exclude_tools: list[str] | None = None,
+        exclude_servers: list[str] | None = None
+    ) -> list[Callable]:
         """Select tools based on criteria.
         
         Args:
@@ -329,7 +327,7 @@ class MCPToolSelector:
         
         return selected_tools
     
-    def _get_preset_config(self, preset: str) -> Optional[Dict[str, Any]]:
+    def _get_preset_config(self, preset: str) -> dict[str, Any] | None:
         """Get preset configuration.
         
         Args:
@@ -376,13 +374,13 @@ class ToolPreset:
     """Reusable tool selection configuration."""
     name: str
     selector: MCPToolSelector
-    tool_names: Optional[List[str]] = None
-    servers: Optional[List[str]] = None
-    tags: Optional[List[str]] = None
-    exclude_tools: Optional[List[str]] = None
-    exclude_servers: Optional[List[str]] = None
+    tool_names: list[str] | None = None
+    servers: list[str] | None = None
+    tags: list[str] | None = None
+    exclude_tools: list[str] | None = None
+    exclude_servers: list[str] | None = None
     
-    def get_tools(self) -> List[Callable]:
+    def get_tools(self) -> list[Callable]:
         """Get tools based on this preset."""
         return self.selector.select_tools(
             tool_names=self.tool_names,

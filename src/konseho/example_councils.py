@@ -1,11 +1,15 @@
 """Example councils showcasing different multi-agent architectures."""
 
-from .core.council import Council
-from .core.steps import DebateStep, ParallelStep, SplitStep
 from .agents.base import AgentWrapper, create_agent
+from .core.council import Council
+from .core.steps import DebateStep, ParallelStep
 from .personas import (
-    EXPLORER_PROMPT, PLANNER_PROMPT, CODER_PROMPT,
-    ANALYST_PROMPT, VISIONARY_PROMPT, CRITIC_PROMPT
+    ANALYST_PROMPT,
+    CODER_PROMPT,
+    CRITIC_PROMPT,
+    EXPLORER_PROMPT,
+    PLANNER_PROMPT,
+    VISIONARY_PROMPT,
 )
 
 

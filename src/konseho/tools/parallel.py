@@ -1,8 +1,9 @@
 """Parallel execution utilities for tools."""
 
-from typing import List, Dict, Any, Callable
-from concurrent.futures import ThreadPoolExecutor, as_completed
 import hashlib
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Any
 
 
 class ParallelExecutor:
@@ -17,7 +18,7 @@ class ParallelExecutor:
         self.max_workers = max_workers
         self._cache = {}  # Simple cache for deduplication
     
-    def execute_parallel(self, tool: Callable, args_list: List[Dict[str, Any]]) -> List[Any]:
+    def execute_parallel(self, tool: Callable, args_list: list[dict[str, Any]]) -> list[Any]:
         """Execute tool with different arguments in parallel.
         
         Args:
@@ -70,7 +71,7 @@ class ParallelExecutor:
         # Return results in original order
         return [results[i] for i in range(len(args_list))]
     
-    def _get_cache_key(self, tool_name: str, args: Dict[str, Any]) -> str:
+    def _get_cache_key(self, tool_name: str, args: dict[str, Any]) -> str:
         """Generate cache key for deduplication.
         
         Args:

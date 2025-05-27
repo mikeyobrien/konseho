@@ -1,20 +1,20 @@
 """Base agent wrapper for Strands agents integration."""
 
-from typing import Any, Optional, Dict, List
 import asyncio
 import copy
-from dataclasses import dataclass, field
-from io import StringIO
 import sys
+from io import StringIO
+from typing import Any
 
 from strands import Agent, tool
+
 from konseho.tools.parallel import ParallelExecutor
 
 
 class AgentWrapper:
     """Wrapper for Strands agents to work within councils."""
     
-    def __init__(self, agent: Agent, name: Optional[str] = None, **kwargs):
+    def __init__(self, agent: Agent, name: str | None = None, **kwargs):
         """Initialize agent wrapper.
         
         Args:
@@ -129,7 +129,7 @@ class AgentWrapper:
     def _inject_parallel_tool(self):
         """Add parallel execution tool to agent."""
         @tool
-        def parallel(tool_name: str, args_list: List[Dict[str, Any]]) -> List[Any]:
+        def parallel(tool_name: str, args_list: list[dict[str, Any]]) -> list[Any]:
             """Execute any tool multiple times in parallel with different arguments.
             
             Args:
@@ -208,7 +208,11 @@ def create_agent(**config) -> Agent:
         model = create_model_from_config()
     elif isinstance(model, str):
         # If model is a string (like "claude-opus-4-20250514"), create proper model object
-        from konseho.config import create_model_from_config, ModelConfig, get_model_config
+        from konseho.config import (
+            ModelConfig,
+            create_model_from_config,
+            get_model_config,
+        )
         base_config = get_model_config()
         # Override just the model_id
         model_config = ModelConfig(
@@ -228,7 +232,7 @@ def create_agent(**config) -> Agent:
         'tools': tools,
         # Always set callback_handler to prevent default PrintingCallbackHandler
         # which conflicts with our buffering in AgentWrapper
-        'callback_handler': config.get('callback_handler', None)
+        'callback_handler': config.get('callback_handler')
     }
     
     # Always inject current date/time information

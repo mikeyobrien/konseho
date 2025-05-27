@@ -1,10 +1,10 @@
 """Tests for council orchestration."""
 
-import pytest
-import asyncio
-from unittest.mock import Mock, AsyncMock
+from unittest.mock import Mock
 
-from konseho import Council, Context, ParallelStep, AgentWrapper
+import pytest
+
+from konseho import AgentWrapper, Context, Council, ParallelStep
 
 
 class MockAgent:

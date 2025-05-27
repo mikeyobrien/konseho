@@ -1,12 +1,15 @@
 """Integration tests for common workflow patterns."""
 
+
 import pytest
-import asyncio
-from unittest.mock import Mock, patch
 
 from konseho import (
-    Council, Context, AgentWrapper, HumanAgent,
-    DebateStep, ParallelStep, SplitStep
+    AgentWrapper,
+    Council,
+    DebateStep,
+    HumanAgent,
+    ParallelStep,
+    SplitStep,
 )
 from tests.fixtures import MockStrandsAgent
 

@@ -1,15 +1,18 @@
 """Integration tests for event system."""
 
-import pytest
 import asyncio
-from typing import List, Dict, Any
+from typing import Any
+
+import pytest
 
 from konseho import (
-    Council, Context, AgentWrapper,
-    ParallelStep, DebateStep, EventEmitter
+    AgentWrapper,
+    Council,
+    DebateStep,
+    EventEmitter,
+    ParallelStep,
 )
-from konseho.execution.events import CouncilEvent
-from tests.fixtures import MockStrandsAgent, EventCollector
+from tests.fixtures import EventCollector, MockStrandsAgent
 
 
 class TestEventSystem:
@@ -82,7 +85,7 @@ class TestEventSystem:
         
         async_events = []
         
-        async def async_handler(event_type: str, data: Dict[str, Any]):
+        async def async_handler(event_type: str, data: dict[str, Any]):
             await asyncio.sleep(0.01)  # Simulate async work
             async_events.append((event_type, data))
         
@@ -104,10 +107,10 @@ class TestEventSystem:
         agent = AgentWrapper(MockStrandsAgent("agent"))
         council = Council("test", [ParallelStep([agent])])
         
-        def failing_handler(event_type: str, data: Dict[str, Any]):
+        def failing_handler(event_type: str, data: dict[str, Any]):
             raise RuntimeError("Handler failed")
         
-        def good_handler(event_type: str, data: Dict[str, Any]):
+        def good_handler(event_type: str, data: dict[str, Any]):
             good_handler.called = True
         
         good_handler.called = False

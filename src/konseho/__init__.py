@@ -9,13 +9,16 @@ logging.basicConfig(
 )
 
 # Core exports
-from .core.council import Council
-from .core.context import Context
-from .core.steps import Step, DebateStep, ParallelStep, SplitStep
-
 # Agent exports
 from .agents.base import AgentWrapper
 from .agents.human import HumanAgent
+from .core.context import Context
+from .core.council import Council
+from .core.steps import DebateStep, ParallelStep, SplitStep, Step
+from .dynamic.analyzer import QueryAnalyzer, TaskType
+
+# Dynamic council exports
+from .dynamic.builder import DynamicCouncilBuilder, create_dynamic_council
 
 # Execution exports
 from .execution.events import EventEmitter
@@ -23,10 +26,6 @@ from .execution.executor import AsyncExecutor
 
 # Interface exports
 from .interface.chat import ChatInterface
-
-# Dynamic council exports
-from .dynamic.builder import DynamicCouncilBuilder, create_dynamic_council
-from .dynamic.analyzer import QueryAnalyzer, TaskType
 
 __version__ = "0.1.0"
 

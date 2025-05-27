@@ -2,9 +2,10 @@
 
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from konseho import Council, DebateStep, AgentWrapper
+from konseho import AgentWrapper, Council, DebateStep
 from tests.fixtures.mock_agents import MockStrandsAgent
 
 # Create mock agents that don't require API credentials

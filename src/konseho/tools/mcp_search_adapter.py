@@ -1,8 +1,10 @@
 """MCP Search Provider adapter for using MCP search tools with Konseho's search system."""
 
-from typing import List, Dict, Any, Optional, Callable
-import re
 import json
+import re
+from collections.abc import Callable
+from typing import Any
+
 from .search_ops import SearchProvider
 
 
@@ -13,7 +15,7 @@ class MCPSearchProvider(SearchProvider):
     and adapts their responses to the standard search result format.
     """
     
-    def __init__(self, mcp_tool: Callable, provider_name: Optional[str] = None):
+    def __init__(self, mcp_tool: Callable, provider_name: str | None = None):
         """Initialize MCP search provider.
         
         Args:
@@ -54,7 +56,7 @@ class MCPSearchProvider(SearchProvider):
                 return parts[1]
             return 'mcp'
     
-    def search(self, query: str, max_results: int = 10) -> List[Dict[str, str]]:
+    def search(self, query: str, max_results: int = 10) -> list[dict[str, str]]:
         """Execute search using the MCP tool.
         
         Args:
@@ -91,7 +93,7 @@ class MCPSearchProvider(SearchProvider):
             print(f"MCP search error: {e}")
             return []
     
-    def _parse_response(self, response: Any, max_results: int) -> List[Dict[str, str]]:
+    def _parse_response(self, response: Any, max_results: int) -> list[dict[str, str]]:
         """Parse MCP tool response into standard search results format."""
         results = []
         
@@ -139,7 +141,7 @@ class MCPSearchProvider(SearchProvider):
             'snippet': str(response)[:500]
         }]
     
-    def _parse_text_response(self, text: str, max_results: int) -> List[Dict[str, str]]:
+    def _parse_text_response(self, text: str, max_results: int) -> list[dict[str, str]]:
         """Parse text-based search responses."""
         results = []
         lines = text.strip().split('\n')
@@ -213,8 +215,8 @@ class MCPSearchProvider(SearchProvider):
 
 def create_mcp_search_provider(
     tool_pattern: str,
-    tools: List[Any]
-) -> Optional[MCPSearchProvider]:
+    tools: list[Any]
+) -> MCPSearchProvider | None:
     """Create an MCP search provider from available tools.
     
     Args:
@@ -256,7 +258,7 @@ def create_mcp_search_provider(
 
 
 # Convenience function for finding any MCP search provider
-def find_mcp_search_provider(tools: List[Any]) -> Optional[MCPSearchProvider]:
+def find_mcp_search_provider(tools: list[Any]) -> MCPSearchProvider | None:
     """Find any available MCP search provider from tools.
     
     Args:

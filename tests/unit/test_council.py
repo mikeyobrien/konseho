@@ -1,12 +1,11 @@
 """Unit tests for Council class."""
 
-import pytest
-import asyncio
-from unittest.mock import Mock, patch
 
-from konseho import Council, Context, ParallelStep, DebateStep, AgentWrapper
+import pytest
+
+from konseho import AgentWrapper, Context, Council, DebateStep, ParallelStep
 from konseho.core.steps import Step
-from tests.fixtures import MockStrandsAgent, EventCollector
+from tests.fixtures import EventCollector, MockStrandsAgent
 
 
 class TestCouncil:

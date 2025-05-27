@@ -1,8 +1,9 @@
 """Generic MCP adapter for using any MCP tools with Konseho agents."""
 
-from typing import Any, Callable, List, Optional, Dict
 import inspect
 import json
+from collections.abc import Callable
+from typing import Any
 
 
 class MCPToolAdapter:
@@ -13,7 +14,7 @@ class MCPToolAdapter:
     that agents can work with effectively.
     """
     
-    def __init__(self, mcp_tool: Callable, name: Optional[str] = None):
+    def __init__(self, mcp_tool: Callable, name: str | None = None):
         """Initialize MCP tool adapter.
         
         Args:
@@ -86,7 +87,7 @@ class MCPToolAdapter:
         # For other types, return as-is
         return response
     
-    def _parse_structured_string(self, text: str) -> Optional[Dict[str, Any]]:
+    def _parse_structured_string(self, text: str) -> dict[str, Any] | None:
         """Parse common structured string formats from MCP tools."""
         lines = text.strip().split('\n')
         
@@ -137,7 +138,7 @@ class MCPToolAdapter:
         return None
 
 
-def adapt_mcp_tools(tools: List[Any], adapt_all: bool = False) -> List[Any]:
+def adapt_mcp_tools(tools: list[Any], adapt_all: bool = False) -> list[Any]:
     """Adapt MCP tools for use with Konseho agents.
     
     Args:

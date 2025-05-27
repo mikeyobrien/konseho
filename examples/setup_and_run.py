@@ -1,8 +1,10 @@
 """Example showing how to set up model providers and run a council."""
 
 import os
+
 from strands import Agent
-from konseho import Council, DebateStep, AgentWrapper
+
+from konseho import AgentWrapper, Council, DebateStep
 
 print("=== Konseho Council Example ===\n")
 
@@ -75,7 +77,7 @@ try:
     
     print("\nAll Proposals:")
     for name, proposal in result['results']['step_0']['proposals'].items():
-        if not "_round_" in name:  # Show only initial proposals
+        if "_round_" not in name:  # Show only initial proposals
             print(f"\n{name}:")
             print(f"  {proposal[:200]}...")
             

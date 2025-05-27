@@ -11,9 +11,10 @@ This example demonstrates:
 
 import asyncio
 import json
-from pathlib import Path
 import tempfile
-from konseho import Council, Agent, DebateStep
+from pathlib import Path
+
+from konseho import Agent, Council, DebateStep
 from konseho.mcp import MCP
 
 

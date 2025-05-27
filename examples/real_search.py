@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 """Example of using real search providers with Konseho."""
 
-import os
 import asyncio
-from typing import List, Dict
-from konseho.agents.base import create_agent, AgentWrapper
-from konseho.tools.search_ops import SearchProvider, web_search as base_web_search
-from konseho.tools.search_tool import web_search
+import os
+
+from strands import tool
+
+from konseho.agents.base import AgentWrapper, create_agent
 from konseho.core.council import Council
 from konseho.core.steps import ParallelStep
-from strands import tool
+from konseho.tools.search_ops import SearchProvider
+from konseho.tools.search_ops import web_search as base_web_search
+from konseho.tools.search_tool import web_search
 
 
 # Example implementation of a real search provider
@@ -23,7 +25,7 @@ class BraveSearchProvider(SearchProvider):
     def name(self) -> str:
         return "brave"
     
-    def search(self, query: str, max_results: int = 10) -> List[Dict[str, str]]:
+    def search(self, query: str, max_results: int = 10) -> list[dict[str, str]]:
         # In a real implementation, you would:
         # 1. Make HTTP request to Brave Search API
         # 2. Parse the response

@@ -1,8 +1,5 @@
 """Tests for parallel tool injection in agents."""
 
-import pytest
-from unittest.mock import Mock, MagicMock
-from typing import Dict, Any, List
 
 from konseho.agents.base import AgentWrapper
 from konseho.tools.parallel import ParallelExecutor

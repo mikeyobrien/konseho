@@ -1,9 +1,5 @@
 """Tests for code manipulation tools."""
 
-import pytest
-import os
-import tempfile
-from pathlib import Path
 
 from konseho.tools.code_ops import code_edit, code_insert
 

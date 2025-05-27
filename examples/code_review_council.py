@@ -2,9 +2,10 @@
 """Example: Code Review Council with multiple steps."""
 
 import asyncio
-from konseho import Council, ParallelStep, DebateStep, Context
+
+from examples.agents import CoderAgent, ExplorerAgent, ReviewerAgent
+from konseho import Council, DebateStep, ParallelStep
 from konseho.agents.base import AgentWrapper
-from examples.agents import ExplorerAgent, ReviewerAgent, CoderAgent
 
 
 async def main():

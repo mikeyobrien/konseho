@@ -1,11 +1,14 @@
 """Example of using MCP search servers with Konseho agents."""
 
-from konseho.agents.base import create_agent, AgentWrapper
-from konseho.tools.search_ops import web_search
-from konseho.tools.mcp_search_adapter import MCPSearchProvider, create_mcp_search_provider
-from konseho.tools.file_ops import file_write
+from konseho.agents.base import AgentWrapper, create_agent
 from konseho.core.council import Council
 from konseho.core.steps import ParallelStep
+from konseho.tools.file_ops import file_write
+from konseho.tools.mcp_search_adapter import (
+    MCPSearchProvider,
+    create_mcp_search_provider,
+)
+from konseho.tools.search_ops import web_search
 
 
 def demo_mcp_search_integration():

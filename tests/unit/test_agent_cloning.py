@@ -1,7 +1,8 @@
 """Unit tests for agent cloning functionality."""
 
+from unittest.mock import MagicMock, Mock, patch
+
 import pytest
-from unittest.mock import Mock, patch, MagicMock
 
 from konseho.agents.base import AgentWrapper
 from konseho.core.steps import SplitStep

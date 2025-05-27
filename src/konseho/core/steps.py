@@ -1,16 +1,17 @@
 """Step implementations for different agent coordination patterns."""
 
-from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional, Callable, Tuple
 import asyncio
 import logging
 import re
-import random
+from abc import ABC, abstractmethod
 from collections import Counter
+from collections.abc import Callable
+from typing import Any
 
 from strands import Agent
-from .context import Context
+
 from ..agents.base import AgentWrapper
+from .context import Context
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +19,7 @@ logger = logging.getLogger(__name__)
 class StepResult:
     """Result from a step execution."""
     
-    def __init__(self, output: str, metadata: Optional[Dict[str, Any]] = None):
+    def __init__(self, output: str, metadata: dict[str, Any] | None = None):
         """Initialize step result.
         
         Args:
@@ -39,11 +40,11 @@ class Step(ABC):
         return self.__class__.__name__
     
     @abstractmethod
-    async def execute(self, task: str, context: Context) -> Dict[str, Any]:
+    async def execute(self, task: str, context: Context) -> dict[str, Any]:
         """Execute the step with given task and context."""
         pass
     
-    def validate(self) -> List[str]:
+    def validate(self) -> list[str]:
         """Validate step configuration.
         
         Returns:
@@ -75,8 +76,8 @@ class DebateStep(Step):
     
     def __init__(
         self,
-        agents: List[AgentWrapper],
-        moderator: Optional[AgentWrapper] = None,
+        agents: list[AgentWrapper],
+        moderator: AgentWrapper | None = None,
         rounds: int = 2,
         voting_strategy: str = "majority"
     ):
@@ -93,7 +94,7 @@ class DebateStep(Step):
         self.rounds = rounds
         self.voting_strategy = voting_strategy
     
-    def validate(self) -> List[str]:
+    def validate(self) -> list[str]:
         """Validate debate step configuration."""
         errors = []
         
@@ -112,7 +113,7 @@ class DebateStep(Step):
         
         return errors
     
-    async def _collect_votes(self, proposals: Dict[str, str]) -> Tuple[Dict[str, str], int]:
+    async def _collect_votes(self, proposals: dict[str, str]) -> tuple[dict[str, str], int]:
         """Collect votes from all agents."""
         from datetime import datetime
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -134,7 +135,7 @@ class DebateStep(Step):
         votes = {}
         abstentions = 0
         
-        for agent, response in zip(self.agents, vote_responses):
+        for agent, response in zip(self.agents, vote_responses, strict=False):
             vote = self._extract_vote(response, proposals)
             if vote == "ABSTAIN":
                 abstentions += 1
@@ -143,7 +144,7 @@ class DebateStep(Step):
         
         return votes, abstentions
     
-    def _extract_vote(self, response: str, proposals: Dict[str, str]) -> Optional[str]:
+    def _extract_vote(self, response: str, proposals: dict[str, str]) -> str | None:
         """Extract vote from agent response."""
         # Ensure response is a string
         if not isinstance(response, str):
@@ -166,13 +167,13 @@ class DebateStep(Step):
         
         return None
     
-    def _count_majority_votes(self, votes: Dict[str, str], proposals: Dict[str, str], abstentions: int) -> Dict[str, Any]:
+    def _count_majority_votes(self, votes: dict[str, str], proposals: dict[str, str], abstentions: int) -> dict[str, Any]:
         """Count votes and determine winner by majority."""
         vote_counts = Counter(votes.values())
         
         # Initialize all proposals with 0 votes
         # Use proposal names as keys instead of proposal content to avoid unhashable dict issues
-        proposal_votes = {name: 0 for name in proposals.keys()}
+        proposal_votes = dict.fromkeys(proposals.keys(), 0)
         
         # Count votes by matching proposal content
         for voter, voted_content in votes.items():
@@ -209,10 +210,10 @@ class DebateStep(Step):
             "abstentions": abstentions
         }
     
-    def _count_weighted_votes(self, votes: Dict[str, str], proposals: Dict[str, str]) -> Dict[str, Any]:
+    def _count_weighted_votes(self, votes: dict[str, str], proposals: dict[str, str]) -> dict[str, Any]:
         """Count votes with agent expertise weighting."""
         # Use proposal names as keys to avoid unhashable dict issues
-        weighted_scores = {name: 0.0 for name in proposals.keys()}
+        weighted_scores = dict.fromkeys(proposals.keys(), 0.0)
         
         for agent in self.agents:
             if agent.name in votes:
@@ -235,7 +236,7 @@ class DebateStep(Step):
             "weighted_scores": weighted_scores
         }
     
-    def _extract_selection(self, response: str, proposals: Dict[str, str]) -> str:
+    def _extract_selection(self, response: str, proposals: dict[str, str]) -> str:
         """Extract selected proposal from moderator response."""
         # Look for proposal mentions in response
         for name, proposal in proposals.items():
@@ -253,7 +254,7 @@ class DebateStep(Step):
         # Default to first proposal if unclear
         return list(proposals.values())[0]
     
-    async def _check_consensus(self, proposals: List[str]) -> bool:
+    async def _check_consensus(self, proposals: list[str]) -> bool:
         """Check if all agents proposed the same solution."""
         # Simple check: all proposals are very similar
         # Handle proposals that might be shorter than 100 chars
@@ -268,7 +269,7 @@ class DebateStep(Step):
             return True
         return False
     
-    def _get_latest_proposals(self, all_proposals: Dict[str, str]) -> Dict[str, str]:
+    def _get_latest_proposals(self, all_proposals: dict[str, str]) -> dict[str, str]:
         """Get the most recent proposal from each agent."""
         latest = {}
         for agent in self.agents:
@@ -279,7 +280,7 @@ class DebateStep(Step):
                 latest[agent.name] = sorted(agent_proposals, key=lambda x: x[0])[-1][1]
         return latest
     
-    async def execute(self, task: str, context: Context) -> Dict[str, Any]:
+    async def execute(self, task: str, context: Context) -> dict[str, Any]:
         """Execute the debate process."""
         proposals = {}
         all_proposals = []  # Track all unique proposals
@@ -291,7 +292,7 @@ class DebateStep(Step):
             proposal_tasks.append(self._get_proposal(agent, prompt))
         
         initial_proposals = await asyncio.gather(*proposal_tasks)
-        for agent, proposal in zip(self.agents, initial_proposals):
+        for agent, proposal in zip(self.agents, initial_proposals, strict=False):
             proposals[agent.name] = proposal
             all_proposals.append(proposal)
         
@@ -311,7 +312,7 @@ class DebateStep(Step):
                 debate_tasks.append(self._get_proposal(agent, prompt))
             
             round_responses = await asyncio.gather(*debate_tasks)
-            for agent, response in zip(self.agents, round_responses):
+            for agent, response in zip(self.agents, round_responses, strict=False):
                 proposals[f"{agent.name}_round_{round_num}"] = response
                 all_proposals.append(response)
             
@@ -365,7 +366,7 @@ class DebateStep(Step):
                 return str(result)
         return str(result)
     
-    def _create_debate_prompt(self, proposals: Dict[str, str], round_num: int) -> str:
+    def _create_debate_prompt(self, proposals: dict[str, str], round_num: int) -> str:
         """Create a prompt summarizing the debate so far."""
         prompt = f"Debate Round {round_num + 1}\n\nCurrent Proposals:\n"
         for name, proposal in proposals.items():
@@ -377,7 +378,7 @@ class DebateStep(Step):
                     prompt += f"\n{name}:\n{proposal}\n"
         return prompt
     
-    async def _select_winner(self, proposals: Dict[str, str], all_proposals: List[str], task: str, context: Context) -> Dict[str, Any]:
+    async def _select_winner(self, proposals: dict[str, str], all_proposals: list[str], task: str, context: Context) -> dict[str, Any]:
         """Select the winning proposal based on voting strategy."""
         # Get original proposals only (not debate rounds)
         original_proposals = {k: v for k, v in proposals.items() if "_round_" not in k}
@@ -425,7 +426,7 @@ class DebateStep(Step):
 class ParallelStep(Step):
     """Agents work on different aspects simultaneously."""
     
-    def __init__(self, agents: List[AgentWrapper], task_splitter: Optional[Callable] = None):
+    def __init__(self, agents: list[AgentWrapper], task_splitter: Callable | None = None):
         """Initialize parallel step.
         
         Args:
@@ -435,7 +436,7 @@ class ParallelStep(Step):
         self.agents = agents
         self.task_splitter = task_splitter
     
-    async def execute(self, task: str, context: Context) -> Dict[str, Any]:
+    async def execute(self, task: str, context: Context) -> dict[str, Any]:
         """Execute agents in parallel."""
         if self.task_splitter:
             subtasks = self.task_splitter(task, len(self.agents))
@@ -445,7 +446,7 @@ class ParallelStep(Step):
         
         # Execute all agents in parallel
         tasks = []
-        for agent, subtask in zip(self.agents, subtasks):
+        for agent, subtask in zip(self.agents, subtasks, strict=False):
             prompt = self._build_prompt_with_time(subtask, context)
             tasks.append(agent.work_on(prompt))
         
@@ -453,7 +454,7 @@ class ParallelStep(Step):
         
         return {
             "parallel_results": {
-                agent.name: result for agent, result in zip(self.agents, results)
+                agent.name: result for agent, result in zip(self.agents, results, strict=False)
             },
             "execution_time": "parallel"
         }
@@ -482,7 +483,7 @@ class SplitStep(Step):
         self.max_agents = max_agents
         self.split_strategy = split_strategy
     
-    async def execute(self, task: str, context: Context) -> Dict[str, Any]:
+    async def execute(self, task: str, context: Context) -> dict[str, Any]:
         """Execute with dynamically created agents."""
         # Determine number of agents needed
         num_agents = self._determine_agent_count(task, context)
@@ -498,7 +499,7 @@ class SplitStep(Step):
         
         # Execute in parallel
         tasks = []
-        for agent, subtask in zip(agents, subtasks):
+        for agent, subtask in zip(agents, subtasks, strict=False):
             prompt = self._build_prompt_with_time(subtask, context)
             tasks.append(agent.work_on(prompt))
         
@@ -544,7 +545,7 @@ class SplitStep(Step):
         # Default: use minimum
         return self.min_agents
     
-    def _split_task(self, task: str, num_agents: int) -> List[str]:
+    def _split_task(self, task: str, num_agents: int) -> list[str]:
         """Intelligently split task into subtasks for each agent."""
         task = task.strip()
         
@@ -589,7 +590,7 @@ class SplitStep(Step):
         else:
             return [f"Agent {i+1} of {num_agents}: {task}" for i in range(num_agents)]
     
-    def _distribute_items(self, items: List[str], num_agents: int) -> List[str]:
+    def _distribute_items(self, items: list[str], num_agents: int) -> list[str]:
         """Distribute items among agents as evenly as possible."""
         subtasks = [[] for _ in range(num_agents)]
         
@@ -610,7 +611,7 @@ class SplitStep(Step):
         
         return result
     
-    def _extract_components(self, task: str) -> List[str]:
+    def _extract_components(self, task: str) -> list[str]:
         """Extract component names from task description."""
         components = []
         
@@ -627,7 +628,7 @@ class SplitStep(Step):
         
         return components
     
-    def _split_task_with_context(self, task: str, num_agents: int, context: Context) -> List[str]:
+    def _split_task_with_context(self, task: str, num_agents: int, context: Context) -> list[str]:
         """Split task using context information for better distribution."""
         # Check if context has project structure
         project_structure = context.get('project_structure', {})
@@ -650,7 +651,7 @@ class SplitStep(Step):
         # Fall back to regular splitting
         return self._split_task(task, num_agents)
     
-    def _create_agent_clones(self, num_agents: int) -> List[AgentWrapper]:
+    def _create_agent_clones(self, num_agents: int) -> list[AgentWrapper]:
         """Create cloned agent wrappers."""
         agents = []
         for i in range(num_agents):

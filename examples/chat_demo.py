@@ -2,9 +2,10 @@
 """Interactive chat interface demo for Konseho councils."""
 
 import asyncio
-from konseho import Council, DebateStep, ParallelStep, ChatInterface
+
+from examples.agents import CoderAgent, ExplorerAgent, PlannerAgent, ReviewerAgent
+from konseho import ChatInterface, Council, DebateStep, ParallelStep
 from konseho.agents.base import AgentWrapper
-from examples.agents import ExplorerAgent, PlannerAgent, CoderAgent, ReviewerAgent
 
 
 async def main():

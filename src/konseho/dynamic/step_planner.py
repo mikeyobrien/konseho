@@ -1,7 +1,8 @@
 """Plans optimal step sequences based on task requirements."""
 
-from typing import List, Dict, Any, Type
-from ..core.steps import Step, DebateStep, ParallelStep, SplitStep
+from typing import Any
+
+from ..core.steps import DebateStep, ParallelStep, SplitStep, Step
 from ..dynamic.analyzer import TaskType
 
 
@@ -139,7 +140,7 @@ class StepPlanner:
             ]
         }
     
-    def plan_steps(self, analysis: Dict[str, Any], agents_count: int) -> List[Step]:
+    def plan_steps(self, analysis: dict[str, Any], agents_count: int) -> list[Step]:
         """Plan optimal steps based on analysis."""
         task_type = analysis["task_type"]
         complexity = analysis["complexity"]
@@ -163,7 +164,7 @@ class StepPlanner:
         
         return steps
     
-    def _get_default_template(self) -> List[Dict[str, Any]]:
+    def _get_default_template(self) -> list[dict[str, Any]]:
         """Get default template for general tasks."""
         return [
             {
@@ -191,12 +192,12 @@ class StepPlanner:
     
     def _adjust_template(
         self, 
-        template: List[Dict[str, Any]], 
+        template: list[dict[str, Any]], 
         complexity: str,
         needs_parallel: bool,
         needs_debate: bool,
         agents_count: int
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Adjust template based on specific requirements."""
         adjusted = []
         
@@ -236,7 +237,7 @@ class StepPlanner:
         
         return adjusted
     
-    def _create_steps(self, template: List[Dict[str, Any]], analysis: Dict[str, Any]) -> List[Step]:
+    def _create_steps(self, template: list[dict[str, Any]], analysis: dict[str, Any]) -> list[Step]:
         """Create step instances from template."""
         steps = []
         query = analysis["query"]

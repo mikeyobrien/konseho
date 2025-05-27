@@ -1,12 +1,7 @@
 """Tests for tool collections."""
 
-import pytest
-from typing import List, Dict, Any
-import re
 
-from konseho.tools.collections import (
-    search_files, search_content, code_metrics
-)
+from konseho.tools.collections import code_metrics, search_content, search_files
 
 
 class TestSearchFiles:

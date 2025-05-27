@@ -1,19 +1,19 @@
 """Context management for sharing state between agents and steps."""
 
-from typing import Dict, Any, List, Optional
 import json
 from datetime import datetime
+from typing import Any
 
 
 class Context:
     """Manages shared state and context flowing between agents and steps."""
     
-    def __init__(self, initial_data: Optional[Dict[str, Any]] = None):
+    def __init__(self, initial_data: dict[str, Any] | None = None):
         """Initialize context with optional initial data."""
-        self._data: Dict[str, Any] = initial_data or {}
-        self._history: List[Dict[str, Any]] = []
-        self._results: Dict[str, Any] = {}
-        self._metadata: Dict[str, Any] = {
+        self._data: dict[str, Any] = initial_data or {}
+        self._history: list[dict[str, Any]] = []
+        self._results: dict[str, Any] = {}
+        self._metadata: dict[str, Any] = {
             "created_at": datetime.now().isoformat(),
             "version": "1.0.0"
         }
@@ -41,11 +41,11 @@ class Context:
             "timestamp": datetime.now().isoformat()
         })
     
-    def get_results(self) -> Dict[str, Any]:
+    def get_results(self) -> dict[str, Any]:
         """Get all stored results."""
         return self._results.copy()
     
-    def get_summary(self) -> Dict[str, Any]:
+    def get_summary(self) -> dict[str, Any]:
         """Get a summary of the context state."""
         return {
             "data": self._data,
@@ -72,9 +72,7 @@ class Context:
         """Recursively serialize data, converting non-serializable objects."""
         if isinstance(data, dict):
             return {k: self._serialize_data(v) for k, v in data.items()}
-        elif isinstance(data, list):
-            return [self._serialize_data(item) for item in data]
-        elif isinstance(data, tuple):
+        elif isinstance(data, list) or isinstance(data, tuple):
             return [self._serialize_data(item) for item in data]
         elif hasattr(data, '__dict__'):
             # Handle objects with __dict__
@@ -99,7 +97,7 @@ class Context:
             "timestamp": datetime.now().isoformat()
         })
     
-    def update(self, data: Dict[str, Any]) -> None:
+    def update(self, data: dict[str, Any]) -> None:
         """Update context with multiple key-value pairs."""
         self._data.update(data)
         self._history.append({
@@ -108,7 +106,7 @@ class Context:
             "timestamp": datetime.now().isoformat()
         })
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Export context as dictionary."""
         return self._data.copy()
     

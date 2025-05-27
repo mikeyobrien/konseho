@@ -2,12 +2,13 @@
 import json
 import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import AsyncMock, Mock, patch
+
 import pytest
 
+from konseho.mcp import MCP
 from konseho.mcp.config import MCPConfigManager
 from konseho.mcp.server import MCPServerManager, MCPToolSelector
-from konseho.mcp import MCP
 
 
 class TestMCPConfigManager:

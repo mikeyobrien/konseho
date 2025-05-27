@@ -1,10 +1,7 @@
 """Tests for shell execution tool."""
 
-import pytest
 import os
-import tempfile
 import sys
-from pathlib import Path
 
 from konseho.tools.shell_ops import shell_run
 

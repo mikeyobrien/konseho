@@ -1,6 +1,7 @@
 """Factory for creating agents from model-generated specifications."""
 
-from typing import List, Dict, Any
+from typing import Any
+
 from ..agents.base import AgentWrapper, create_agent
 from .persona_registry import PERSONA_REGISTRY
 
@@ -11,7 +12,7 @@ class ModelAgentFactory:
     def __init__(self):
         self.registry = PERSONA_REGISTRY
     
-    def _resolve_tools(self, tool_names: List[Any]) -> List[Any]:
+    def _resolve_tools(self, tool_names: list[Any]) -> list[Any]:
         """Resolve tool names to actual tool instances.
         
         Args:
@@ -61,7 +62,7 @@ class ModelAgentFactory:
             
             # Return the first tool (should be brave_web_search)
             if tools:
-                print(f"Using MCP search tool from brave-search server")
+                print("Using MCP search tool from brave-search server")
                 return tools[0]
                 
         except Exception as e:
@@ -69,7 +70,7 @@ class ModelAgentFactory:
         
         return None
     
-    def create_agents_from_spec(self, agent_specs: List[Dict[str, Any]]) -> List[AgentWrapper]:
+    def create_agents_from_spec(self, agent_specs: list[dict[str, Any]]) -> list[AgentWrapper]:
         """Create agents from model-generated specifications.
         
         Args:
@@ -130,7 +131,7 @@ class ModelAgentFactory:
         else:
             return 0.75
     
-    def _build_persona(self, spec: Dict[str, Any]) -> str:
+    def _build_persona(self, spec: dict[str, Any]) -> str:
         """Build a detailed persona from agent specification."""
         name = spec["name"]
         role = spec["role"]

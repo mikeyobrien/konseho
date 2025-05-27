@@ -2,16 +2,15 @@
 """Main entry point for Konseho CLI."""
 
 import asyncio
-import sys
 import logging
-from typing import Optional
+import sys
 
-from .interface.chat import ChatInterface
-from .core.council import Council
-from .core.steps import DebateStep
 from .agents.base import AgentWrapper
-from .dynamic.builder import DynamicCouncilBuilder
+from .core.council import Council
 from .core.output_manager import OutputManager
+from .core.steps import DebateStep
+from .dynamic.builder import DynamicCouncilBuilder
+from .interface.chat import ChatInterface
 
 # Configure logging to suppress httpx debug messages
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -68,7 +67,7 @@ def create_example_council() -> Council:
     """Create an example council with mock agents."""
     # Import here to avoid circular imports
     from .agents.base import create_agent
-    from .personas import EXPLORER_PROMPT, PLANNER_PROMPT, CODER_PROMPT
+    from .personas import CODER_PROMPT, EXPLORER_PROMPT, PLANNER_PROMPT
     
     # Create agents with distinct personas
     explorer = AgentWrapper(
@@ -110,7 +109,7 @@ def create_example_council() -> Council:
     )
 
 
-async def run_interactive_chat(council: Optional[Council] = None, dynamic_mode: bool = False, analyzer_model: Optional[str] = None, save_outputs: bool = False, output_dir: Optional[str] = None):
+async def run_interactive_chat(council: Council | None = None, dynamic_mode: bool = False, analyzer_model: str | None = None, save_outputs: bool = False, output_dir: str | None = None):
     """Run the interactive chat interface.
     
     Args:
@@ -139,7 +138,7 @@ async def run_interactive_chat(council: Optional[Council] = None, dynamic_mode: 
         await chat.interactive_session(council)
 
 
-async def run_dynamic_chat_session(chat: ChatInterface, analyzer_model: Optional[str] = None, save_outputs: bool = False, output_dir: Optional[str] = None):
+async def run_dynamic_chat_session(chat: ChatInterface, analyzer_model: str | None = None, save_outputs: bool = False, output_dir: str | None = None):
     """Run chat session with dynamic council creation for each query.
     
     Args:
@@ -192,7 +191,7 @@ async def run_dynamic_chat_session(chat: ChatInterface, analyzer_model: Optional
         print("\nGoodbye!")
 
 
-async def run_single_query(prompt: str, council: Optional[Council] = None, dynamic_mode: bool = False, quiet: bool = False, analyzer_model: Optional[str] = None, save_outputs: bool = False, output_dir: Optional[str] = None):
+async def run_single_query(prompt: str, council: Council | None = None, dynamic_mode: bool = False, quiet: bool = False, analyzer_model: str | None = None, save_outputs: bool = False, output_dir: str | None = None):
     """Run a single query and exit.
     
     Args:
@@ -256,7 +255,7 @@ async def run_single_query(prompt: str, council: Optional[Council] = None, dynam
         
         # Show execution metadata
         if isinstance(result, dict) and "metadata" in result and result["metadata"]:
-            print(f"\n📈 Summary:")
+            print("\n📈 Summary:")
             for key, value in result["metadata"].items():
                 if value:
                     print(f"  • {key}: {value}")

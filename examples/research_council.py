@@ -2,9 +2,10 @@
 """Example: Research Council with split work distribution."""
 
 import asyncio
-from konseho import Council, SplitStep, DebateStep, Context
-from konseho.agents.base import AgentWrapper
+
 from examples.agents import ExplorerAgent, PlannerAgent
+from konseho import Council, DebateStep, SplitStep
+from konseho.agents.base import AgentWrapper
 
 
 async def main():
@@ -73,7 +74,7 @@ async def main():
     debate_results = result['results'].get('step_1', {})
     if 'winner' in debate_results:
         print(f"Voting strategy: {debate_results.get('strategy', 'unknown')}")
-        print(f"Final synthesis:")
+        print("Final synthesis:")
         print(debate_results['winner'][:300] + "..." if len(debate_results['winner']) > 300 else debate_results['winner'])
     
     print("\n✅ Research Council Complete!")

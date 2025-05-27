@@ -1,19 +1,19 @@
 """Builder for creating dynamic councils based on user queries."""
 
-from typing import Optional, Dict, Any
-import asyncio
-from ..core.council import Council
+from typing import Any
+
 from ..core.context import Context
+from ..core.council import Council
 from .analyzer import TaskType
-from .model_analyzer import ModelAnalyzer
 from .model_agent_factory import ModelAgentFactory
+from .model_analyzer import ModelAnalyzer
 from .model_step_planner import ModelStepPlanner
 
 
 class DynamicCouncilBuilder:
     """Builds councils dynamically based on query analysis."""
     
-    def __init__(self, verbose: bool = False, analyzer_model: Optional[str] = None, analyzer_temperature: float = 0.3):
+    def __init__(self, verbose: bool = False, analyzer_model: str | None = None, analyzer_temperature: float = 0.3):
         """Initialize the builder.
         
         Args:
@@ -32,7 +32,7 @@ class DynamicCouncilBuilder:
         self.model_factory = ModelAgentFactory()
         self.model_planner = ModelStepPlanner()
     
-    async def build(self, query: str, context: Optional[Context] = None, save_outputs: bool = False, output_dir: Optional[str] = None) -> Council:
+    async def build(self, query: str, context: Context | None = None, save_outputs: bool = False, output_dir: str | None = None) -> Council:
         """Build a council optimized for the given query."""
         # Model-based analysis is always async
         analysis = await self.analyzer.analyze(query)
@@ -111,7 +111,7 @@ class DynamicCouncilBuilder:
         
         return council
     
-    def build_from_config(self, config: Dict[str, Any]) -> Council:
+    def build_from_config(self, config: dict[str, Any]) -> Council:
         """Build a council from explicit configuration.
         
         This method requires async execution for model-based analysis.
@@ -124,7 +124,7 @@ class DynamicCouncilBuilder:
 
 
 # Convenience function for quick council creation
-async def create_dynamic_council(query: str, verbose: bool = False, analyzer_model: Optional[str] = None, save_outputs: bool = False, output_dir: Optional[str] = None) -> Council:
+async def create_dynamic_council(query: str, verbose: bool = False, analyzer_model: str | None = None, save_outputs: bool = False, output_dir: str | None = None) -> Council:
     """Create a council dynamically based on a query.
     
     This is the main entry point for dynamic council creation.

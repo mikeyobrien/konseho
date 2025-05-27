@@ -1,8 +1,7 @@
 """File operation tools for agents."""
 
 import os
-from pathlib import Path
-from typing import Optional
+
 from konseho.tools.diff_utils import generate_inline_diff, summarize_changes
 
 
@@ -22,12 +21,12 @@ def file_read(path: str, encoding: str = "utf-8") -> str:
             return f"Error: File not found: {path}"
         
         # Try to read the file
-        with open(path, 'r', encoding=encoding) as f:
+        with open(path, encoding=encoding) as f:
             content = f.read()
             
         # Check for null bytes which indicate binary content
         if '\x00' in content:
-            return f"Error: File appears to be binary. Cannot read as text."
+            return "Error: File appears to be binary. Cannot read as text."
             
         return content
             
@@ -57,7 +56,7 @@ def file_write(path: str, content: str, encoding: str = "utf-8", show_diff: bool
         file_exists = os.path.exists(path)
         if file_exists and show_diff:
             try:
-                with open(path, 'r', encoding=encoding) as f:
+                with open(path, encoding=encoding) as f:
                     original_content = f.read()
             except:
                 # If we can't read it, just skip the diff

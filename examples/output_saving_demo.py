@@ -3,11 +3,12 @@
 
 import asyncio
 from pathlib import Path
-from konseho import Council, Context, DebateStep, ParallelStep
+
+from konseho import Context, Council, DebateStep
 from konseho.agents.base import AgentWrapper, create_agent
-from konseho.personas import EXPLORER_PROMPT, PLANNER_PROMPT, ANALYST_PROMPT
-from konseho.dynamic.builder import create_dynamic_council
 from konseho.core.output_manager import OutputManager
+from konseho.dynamic.builder import create_dynamic_council
+from konseho.personas import ANALYST_PROMPT, EXPLORER_PROMPT, PLANNER_PROMPT
 
 
 async def demo_basic_output_saving():

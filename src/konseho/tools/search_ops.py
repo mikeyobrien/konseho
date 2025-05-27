@@ -1,9 +1,9 @@
 """Search tool with pluggable provider system."""
 
-import os
-from typing import List, Dict, Any, Optional
-from abc import ABC, abstractmethod
 import hashlib
+import os
+from abc import ABC, abstractmethod
+from typing import Any
 
 
 class SearchProvider(ABC):
@@ -15,7 +15,7 @@ class SearchProvider(ABC):
         return "base"
     
     @abstractmethod
-    def search(self, query: str, max_results: int = 10) -> List[Dict[str, str]]:
+    def search(self, query: str, max_results: int = 10) -> list[dict[str, str]]:
         """Execute a search query.
         
         Args:
@@ -38,7 +38,7 @@ class MockSearchProvider(SearchProvider):
     def name(self) -> str:
         return "mock"
     
-    def search(self, query: str, max_results: int = 10) -> List[Dict[str, str]]:
+    def search(self, query: str, max_results: int = 10) -> list[dict[str, str]]:
         """Generate mock search results based on query."""
         # Generate deterministic mock results based on query
         results = []
@@ -101,8 +101,8 @@ class MockSearchProvider(SearchProvider):
 def web_search(
     query: str,
     max_results: int = 10,
-    provider: Optional[SearchProvider] = None
-) -> Dict[str, Any]:
+    provider: SearchProvider | None = None
+) -> dict[str, Any]:
     """Search the web using configured provider.
     
     Args:

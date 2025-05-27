@@ -1,12 +1,10 @@
 """MCP configuration management compatible with mcp.json format."""
 
 import json
-import os
-from pathlib import Path
-from typing import Dict, List, Any, Optional, Union
-from dataclasses import dataclass, field
-import subprocess
 import logging
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -15,12 +13,12 @@ logger = logging.getLogger(__name__)
 class MCPServerConfig:
     """Configuration for a single MCP server."""
     command: str
-    args: List[str] = field(default_factory=list)
-    env: Dict[str, str] = field(default_factory=dict)
+    args: list[str] = field(default_factory=list)
+    env: dict[str, str] = field(default_factory=dict)
     enabled: bool = True
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'MCPServerConfig':
+    def from_dict(cls, data: dict[str, Any]) -> 'MCPServerConfig':
         """Create from dictionary configuration."""
         return cls(
             command=data.get('command', ''),
@@ -29,7 +27,7 @@ class MCPServerConfig:
             enabled=data.get('enabled', True)
         )
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             'command': self.command,
@@ -42,17 +40,17 @@ class MCPServerConfig:
 class MCPConfigManager:
     """Manage MCP server configurations compatible with mcp.json format."""
     
-    def __init__(self, config_path: Optional[Union[str, Path]] = None):
+    def __init__(self, config_path: str | Path | None = None):
         """Initialize MCP configuration manager.
         
         Args:
             config_path: Path to mcp.json file. If None, searches standard locations.
         """
         self.config_path = self._find_config_path(config_path)
-        self.servers: Dict[str, MCPServerConfig] = {}
+        self.servers: dict[str, MCPServerConfig] = {}
         self._load_config()
     
-    def _find_config_path(self, config_path: Optional[Union[str, Path]] = None) -> Path:
+    def _find_config_path(self, config_path: str | Path | None = None) -> Path:
         """Find the MCP configuration file.
         
         Searches in order:
@@ -90,7 +88,7 @@ class MCPConfigManager:
             return
         
         try:
-            with open(self.config_path, 'r') as f:
+            with open(self.config_path) as f:
                 data = json.load(f)
             
             # Handle both formats:
@@ -138,15 +136,15 @@ class MCPConfigManager:
             return True
         return False
     
-    def get_server(self, name: str) -> Optional[MCPServerConfig]:
+    def get_server(self, name: str) -> MCPServerConfig | None:
         """Get configuration for a specific server."""
         return self.servers.get(name)
     
-    def list_servers(self) -> List[str]:
+    def list_servers(self) -> list[str]:
         """List all configured server names."""
         return list(self.servers.keys())
     
-    def get_enabled_servers(self) -> Dict[str, MCPServerConfig]:
+    def get_enabled_servers(self) -> dict[str, MCPServerConfig]:
         """Get all enabled server configurations."""
         return {
             name: config 

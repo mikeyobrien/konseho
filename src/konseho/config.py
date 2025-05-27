@@ -1,8 +1,8 @@
 """Configuration management for Konseho model providers."""
 
 import os
-from typing import Optional, Dict, Any
 from dataclasses import dataclass
+from typing import Any
 
 # Try to load environment variables from .env file
 try:
@@ -18,8 +18,8 @@ class ModelConfig:
     """Configuration for a model provider."""
     provider: str
     model_id: str
-    api_key: Optional[str] = None
-    additional_args: Optional[Dict[str, Any]] = None
+    api_key: str | None = None
+    additional_args: dict[str, Any] | None = None
 
 
 def get_model_config() -> ModelConfig:
@@ -79,7 +79,7 @@ def get_model_config() -> ModelConfig:
         )
 
 
-def create_model_from_config(config: Optional[ModelConfig] = None):
+def create_model_from_config(config: ModelConfig | None = None):
     """Create a Strands model instance from configuration.
     
     Args:

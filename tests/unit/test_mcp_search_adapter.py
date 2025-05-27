@@ -1,9 +1,12 @@
 """Tests for MCP search adapter."""
 
-import pytest
-from unittest.mock import Mock
 
-from konseho.tools.mcp_search_adapter import MCPSearchProvider, create_mcp_search_provider
+import pytest
+
+from konseho.tools.mcp_search_adapter import (
+    MCPSearchProvider,
+    create_mcp_search_provider,
+)
 
 
 class TestMCPSearchProvider:

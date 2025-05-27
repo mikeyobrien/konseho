@@ -1,6 +1,6 @@
 """Reviewer agent for code review and quality assurance."""
 
-from typing import List, Optional, Dict
+
 from strands import Agent
 
 
@@ -12,7 +12,7 @@ class ReviewerAgent(Agent):
         name: str = "Reviewer",
         model: str = "gpt-4",
         temperature: float = 0.3,
-        tools: Optional[List[str]] = None
+        tools: list[str] | None = None
     ):
         """Initialize the Reviewer agent.
         
@@ -53,7 +53,7 @@ When reviewing code:
 
 Provide constructive feedback with specific suggestions."""
     
-    def review_code(self, code: str, context: Optional[str] = None) -> str:
+    def review_code(self, code: str, context: str | None = None) -> str:
         """Perform a comprehensive code review.
         
         Args:
@@ -120,7 +120,7 @@ For each issue found:
 """
         return self(security_prompt)
     
-    def check_best_practices(self, code: str, language: str = "python") -> Dict[str, str]:
+    def check_best_practices(self, code: str, language: str = "python") -> dict[str, str]:
         """Check if code follows best practices.
         
         Args:
@@ -182,7 +182,7 @@ Provide specific refactoring suggestions with benefits.
 """
         return self(refactor_prompt)
     
-    def review_tests(self, test_code: str, implementation_code: Optional[str] = None) -> str:
+    def review_tests(self, test_code: str, implementation_code: str | None = None) -> str:
         """Review test code quality and coverage.
         
         Args:

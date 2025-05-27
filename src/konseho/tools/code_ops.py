@@ -1,7 +1,7 @@
 """Code manipulation tools for agents."""
 
 import os
-from typing import Optional
+
 from konseho.tools.diff_utils import generate_inline_diff, summarize_changes
 
 
@@ -30,13 +30,13 @@ def code_edit(
             return f"Error: File not found: {path}"
         
         # Read the file
-        with open(path, 'r', encoding='utf-8') as f:
+        with open(path, encoding='utf-8') as f:
             original_content = f.read()
         
         # Count occurrences
         count = original_content.count(search)
         if count == 0:
-            return f"Error: Search string not found in file"
+            return "Error: Search string not found in file"
         
         if occurrence > count:
             return f"Error: Only found {count} occurrences, but occurrence {occurrence} was requested"
@@ -44,7 +44,7 @@ def code_edit(
         # Replace the specific occurrence
         parts = original_content.split(search, occurrence)
         if len(parts) <= occurrence:
-            return f"Error: Could not split content properly"
+            return "Error: Could not split content properly"
         
         # Reconstruct with replacement
         new_content = search.join(parts[:occurrence]) + replace + parts[occurrence]
@@ -92,7 +92,7 @@ def code_insert(
             return f"Error: File not found: {path}"
         
         # Read the file
-        with open(path, 'r', encoding='utf-8') as f:
+        with open(path, encoding='utf-8') as f:
             original_content = f.read()
             lines = original_content.splitlines(keepends=True)
         
@@ -100,7 +100,7 @@ def code_insert(
         if not lines and line == 1:
             with open(path, 'w', encoding='utf-8') as f:
                 f.write(content + '\n')
-            result = f"Success: Inserted content into empty file"
+            result = "Success: Inserted content into empty file"
             if show_diff:
                 diff = generate_inline_diff("", content + '\n', path)
                 result += f"\n\n{diff}"

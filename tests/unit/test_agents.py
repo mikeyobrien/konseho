@@ -1,8 +1,9 @@
 """Unit tests for Agent wrappers."""
 
-import pytest
 import asyncio
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import patch
+
+import pytest
 
 from konseho import AgentWrapper, HumanAgent
 from tests.fixtures import MockStrandsAgent

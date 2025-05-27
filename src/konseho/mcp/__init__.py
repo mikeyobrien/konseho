@@ -1,10 +1,12 @@
 """MCP (Model Context Protocol) integration for Konseho."""
 
-from konseho.mcp.config import MCPConfigManager, MCPServerConfig
-from konseho.mcp.server import MCPServerManager, MCPToolSelector, ToolPreset
-from typing import List, Optional, Dict, Any, Callable
 import asyncio
 import logging
+from collections.abc import Callable
+from typing import Any, Dict, List, Optional
+
+from konseho.mcp.config import MCPConfigManager, MCPServerConfig
+from konseho.mcp.server import MCPServerManager, MCPToolSelector, ToolPreset
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +14,7 @@ logger = logging.getLogger(__name__)
 class MCP:
     """High-level interface for MCP integration."""
     
-    def __init__(self, config_path: Optional[str] = None):
+    def __init__(self, config_path: str | None = None):
         """Initialize MCP integration.
         
         Args:
@@ -46,7 +48,7 @@ class MCP:
             self.server_manager.start_server(name)
         )
     
-    def start_all(self) -> Dict[str, bool]:
+    def start_all(self) -> dict[str, bool]:
         """Start all enabled MCP servers.
         
         Returns:
@@ -85,11 +87,11 @@ class MCP:
     
     def get_tools(
         self,
-        tools: Optional[List[str]] = None,
-        servers: Optional[List[str]] = None,
-        exclude_tools: Optional[List[str]] = None,
-        exclude_servers: Optional[List[str]] = None
-    ) -> List[Callable]:
+        tools: list[str] | None = None,
+        servers: list[str] | None = None,
+        exclude_tools: list[str] | None = None,
+        exclude_servers: list[str] | None = None
+    ) -> list[Callable]:
         """Get tools with filtering.
         
         Args:
@@ -133,7 +135,7 @@ class MCP:
         """
         return self.tool_selector.create_tool_preset(name, **kwargs)
     
-    def list_servers(self) -> List[Dict[str, Any]]:
+    def list_servers(self) -> list[dict[str, Any]]:
         """List all configured servers with status.
         
         Returns:
@@ -153,7 +155,7 @@ class MCP:
         
         return servers
     
-    def list_tools(self) -> List[Dict[str, str]]:
+    def list_tools(self) -> list[dict[str, str]]:
         """List all available tools.
         
         Returns:
@@ -161,8 +163,8 @@ class MCP:
         """
         return self.server_manager.list_tools()
     
-    def add_server(self, name: str, command: str, args: List[str] = None, 
-                   env: Dict[str, str] = None, enabled: bool = True):
+    def add_server(self, name: str, command: str, args: list[str] = None, 
+                   env: dict[str, str] = None, enabled: bool = True):
         """Add a new MCP server configuration.
         
         Args:
@@ -198,10 +200,10 @@ class MCP:
 
 # Convenience functions
 def load_mcp_tools(
-    config_path: Optional[str] = None,
-    servers: Optional[List[str]] = None,
-    tools: Optional[List[str]] = None
-) -> List[Callable]:
+    config_path: str | None = None,
+    servers: list[str] | None = None,
+    tools: list[str] | None = None
+) -> list[Callable]:
     """Quick function to load MCP tools.
     
     Args:

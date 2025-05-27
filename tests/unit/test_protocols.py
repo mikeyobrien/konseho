@@ -1,28 +1,24 @@
 """Tests for protocol implementations and adapters."""
 
-import pytest
-from typing import Dict, Any, List
+from typing import Any
 
-from konseho.protocols import (
-    IAgent,
-    IStep,
-    IContext,
-    IStepResult,
-    ITool,
-    IModelProvider,
-    ISearchProvider,
-)
+import pytest
+
 from konseho.adapters import (
+    AgentAdapter,
+    ContextAdapter,
     MockAgent,
     MockStep,
-    MockStepResult,
-    AgentAdapter,
     StepAdapter,
-    ContextAdapter,
 )
 from konseho.core.context import Context
-from konseho.core.steps import Step, StepResult, DebateStep
-from konseho.agents.base import AgentWrapper
+from konseho.core.steps import Step, StepResult
+from konseho.protocols import (
+    IAgent,
+    IContext,
+    IStep,
+    IStepResult,
+)
 
 
 class TestProtocols:
@@ -131,7 +127,7 @@ class TestAdapters:
             def name(self):
                 return "TestStep"
 
-            async def execute(self, task: str, context: Context) -> Dict[str, Any]:
+            async def execute(self, task: str, context: Context) -> dict[str, Any]:
                 return {"output": "test result"}
 
         step = TestStep()
@@ -179,7 +175,7 @@ class TestProtocolValidation:
             async def work_on(self, task: str) -> str:
                 return "done"
 
-            def get_capabilities(self) -> Dict[str, Any]:
+            def get_capabilities(self) -> dict[str, Any]:
                 return {}
 
         agent = MinimalAgent()
@@ -217,7 +213,7 @@ class TestProtocolUsage:
     def test_function_accepting_protocol(self):
         """Test functions that accept protocol types."""
 
-        def process_agents(agents: List[IAgent]) -> Dict[str, str]:
+        def process_agents(agents: list[IAgent]) -> dict[str, str]:
             """Function that works with any IAgent implementation."""
             return {agent.name: agent.model for agent in agents}
 
@@ -233,7 +229,7 @@ class TestProtocolUsage:
         """Test a workflow using only protocol interfaces."""
 
         async def run_workflow(
-            agents: List[IAgent], steps: List[IStep], context: IContext
+            agents: list[IAgent], steps: list[IStep], context: IContext
         ) -> str:
             """Workflow that uses only protocol interfaces."""
             # Add agent info to context

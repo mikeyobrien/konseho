@@ -1,15 +1,17 @@
 """Integration tests for council execution flow."""
 
+from unittest.mock import Mock
+
 import pytest
-import asyncio
-from unittest.mock import Mock, patch
 
 from konseho import (
-    Council, Context, AgentWrapper, HumanAgent,
-    DebateStep, ParallelStep, SplitStep,
-    AsyncExecutor
+    AgentWrapper,
+    AsyncExecutor,
+    Council,
+    DebateStep,
+    ParallelStep,
 )
-from tests.fixtures import MockStrandsAgent, EventCollector
+from tests.fixtures import MockStrandsAgent
 
 
 class TestFullCouncilExecution:

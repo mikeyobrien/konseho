@@ -1,12 +1,11 @@
 """Unit tests for Step implementations."""
 
-import pytest
-import asyncio
-from unittest.mock import Mock, patch, AsyncMock
 
-from konseho import Context, DebateStep, ParallelStep, SplitStep, AgentWrapper
+import pytest
+
+from konseho import AgentWrapper, Context, DebateStep, ParallelStep, SplitStep
 from konseho.core.steps import Step
-from tests.fixtures import MockStrandsAgent, MockAgent
+from tests.fixtures import MockStrandsAgent
 
 
 class TestParallelStep:

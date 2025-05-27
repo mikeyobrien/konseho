@@ -1,6 +1,5 @@
 """Tests for context management."""
 
-import pytest
 from konseho import Context
 
 

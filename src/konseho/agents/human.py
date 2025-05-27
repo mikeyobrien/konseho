@@ -1,7 +1,7 @@
 """Human-in-the-loop agent implementation."""
 
-from typing import Optional, Callable
 import asyncio
+from collections.abc import Callable
 
 from .base import AgentWrapper
 
@@ -12,7 +12,7 @@ class HumanAgent(AgentWrapper):
     def __init__(
         self,
         name: str = "human",
-        input_handler: Optional[Callable[[str], str]] = None
+        input_handler: Callable[[str], str] | None = None
     ):
         """Initialize human agent.
         

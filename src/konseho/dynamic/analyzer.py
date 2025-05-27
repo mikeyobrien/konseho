@@ -1,8 +1,8 @@
 """Query analyzer to understand task requirements and suggest council configuration."""
 
-from enum import Enum
-from typing import List, Dict, Any, Optional
 import re
+from enum import Enum
+from typing import Any
 
 
 class TaskType(Enum):
@@ -59,7 +59,7 @@ class QueryAnalyzer:
             "scientific": ["research", "data", "analysis", "hypothesis", "experiment"],
         }
     
-    def analyze(self, query: str) -> Dict[str, Any]:
+    def analyze(self, query: str) -> dict[str, Any]:
         """Analyze a query and return configuration suggestions."""
         query_lower = query.lower()
         
@@ -99,7 +99,7 @@ class QueryAnalyzer:
                     return task_type
         return TaskType.GENERAL
     
-    def _detect_domains(self, query: str) -> List[str]:
+    def _detect_domains(self, query: str) -> list[str]:
         """Detect domains mentioned in the query."""
         detected = []
         for domain, keywords in self.domain_keywords.items():
@@ -121,7 +121,7 @@ class QueryAnalyzer:
         else:
             return "low"
     
-    def _suggest_agent_count(self, task_type: TaskType, complexity: str, domains: List[str]) -> int:
+    def _suggest_agent_count(self, task_type: TaskType, complexity: str, domains: list[str]) -> int:
         """Suggest optimal number of agents."""
         base_count = {
             TaskType.RESEARCH: 3,
@@ -146,7 +146,7 @@ class QueryAnalyzer:
             
         return min(count, 6)  # Cap at 6 agents
     
-    def _needs_parallel_work(self, task_type: TaskType, domains: List[str]) -> bool:
+    def _needs_parallel_work(self, task_type: TaskType, domains: list[str]) -> bool:
         """Determine if parallel execution would be beneficial."""
         # Parallel work is good for research, analysis with multiple domains
         if task_type in [TaskType.RESEARCH, TaskType.ANALYSIS] and len(domains) > 1:

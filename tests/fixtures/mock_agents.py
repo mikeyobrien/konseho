@@ -1,9 +1,9 @@
 """Mock agents and test utilities for Konseho tests."""
 
-from typing import List, Dict, Any, Optional
 import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Any
 
 
 class MockStrandsAgent:
@@ -14,7 +14,7 @@ class MockStrandsAgent:
         self.response = response
         self.delay = delay
         self.call_count = 0
-        self.call_history: List[str] = []
+        self.call_history: list[str] = []
     
     def __call__(self, prompt: str) -> 'MockResult':
         """Simulate Strands agent call."""
@@ -42,7 +42,7 @@ class MockAgent:
         name: str,
         response: str = "Mock response",
         delay: float = 0.0,
-        fail_after: Optional[int] = None,
+        fail_after: int | None = None,
         error_message: str = "Mock error"
     ):
         self.name = name
@@ -51,7 +51,7 @@ class MockAgent:
         self.fail_after = fail_after
         self.error_message = error_message
         self.call_count = 0
-        self.call_history: List[str] = []
+        self.call_history: list[str] = []
     
     async def __call__(self, prompt: str) -> str:
         """Async mock agent call."""
@@ -71,7 +71,7 @@ class MockAgent:
 class CouncilEvent:
     """Event data structure for testing."""
     event_type: str
-    data: Dict[str, Any]
+    data: dict[str, Any]
     timestamp: datetime = field(default_factory=datetime.now)
 
 
@@ -79,19 +79,19 @@ class EventCollector:
     """Collects events for testing."""
     
     def __init__(self):
-        self.events: List[CouncilEvent] = []
-        self.event_counts: Dict[str, int] = {}
+        self.events: list[CouncilEvent] = []
+        self.event_counts: dict[str, int] = {}
     
-    def collect(self, event_type: str, data: Dict[str, Any]) -> None:
+    def collect(self, event_type: str, data: dict[str, Any]) -> None:
         """Collect an event."""
         self.events.append(CouncilEvent(event_type, data))
         self.event_counts[event_type] = self.event_counts.get(event_type, 0) + 1
     
-    async def async_collect(self, event_type: str, data: Dict[str, Any]) -> None:
+    async def async_collect(self, event_type: str, data: dict[str, Any]) -> None:
         """Async event collection."""
         self.collect(event_type, data)
     
-    def get_events_by_type(self, event_type: str) -> List[CouncilEvent]:
+    def get_events_by_type(self, event_type: str) -> list[CouncilEvent]:
         """Get all events of a specific type."""
         return [e for e in self.events if e.event_type == event_type]
     
@@ -104,6 +104,6 @@ class EventCollector:
         """Check if an event type was emitted."""
         return event_type in self.event_counts
     
-    def get_event_sequence(self) -> List[str]:
+    def get_event_sequence(self) -> list[str]:
         """Get the sequence of event types."""
         return [e.event_type for e in self.events]

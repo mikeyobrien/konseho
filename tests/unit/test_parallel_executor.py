@@ -1,9 +1,6 @@
 """Tests for parallel tool execution."""
 
-import pytest
-from unittest.mock import Mock
 import time
-from typing import Dict, Any
 
 from konseho.tools.parallel import ParallelExecutor
 

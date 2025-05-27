@@ -1,14 +1,14 @@
 """Example demonstrating the use of protocols for loose coupling and testing."""
 
 import asyncio
-from typing import Dict, Any, List
+from typing import Any
 
-from konseho.protocols import IAgent, IStep, IContext, IStepResult
-from konseho.adapters import MockAgent, MockStep, AgentAdapter, StepAdapter
-from konseho.core.council import Council
-from konseho.core.context import Context
-from konseho.core.steps import DebateStep
+from konseho.adapters import AgentAdapter, MockAgent, MockStep, StepAdapter
 from konseho.agents.base import create_agent
+from konseho.core.context import Context
+from konseho.core.council import Council
+from konseho.core.steps import DebateStep
+from konseho.protocols import IAgent, IContext, IStep
 
 
 async def example_with_mock_agents():
@@ -60,7 +60,7 @@ async def example_with_protocol_validation():
         async def work_on(self, task: str) -> str:
             return f"{self.name} working on: {task}"
 
-        def get_capabilities(self) -> Dict[str, Any]:
+        def get_capabilities(self) -> dict[str, Any]:
             return {"custom": True}
 
     # Create instance and validate

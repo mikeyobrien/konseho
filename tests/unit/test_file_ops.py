@@ -1,11 +1,7 @@
 """Tests for file operation tools."""
 
-import pytest
-import os
-import tempfile
-from pathlib import Path
 
-from konseho.tools.file_ops import file_read, file_write, file_append
+from konseho.tools.file_ops import file_append, file_read, file_write
 
 
 class TestFileRead:

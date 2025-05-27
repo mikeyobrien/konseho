@@ -9,17 +9,20 @@ This example shows:
 4. Dynamic provider selection based on configuration
 """
 
-import os
 import asyncio
-from typing import List, Dict, Optional
-from konseho.agents.base import create_agent, AgentWrapper
-from konseho.tools.search_ops import SearchProvider, web_search, MockSearchProvider
-from konseho.tools.mcp_search_adapter import MCPSearchProvider, create_mcp_search_provider
-from konseho.tools.file_ops import file_write, file_read
-from konseho.core.council import Council
-from konseho.core.steps import ParallelStep, DebateStep
+import os
+
 # from konseho.mcp.config import MCPConfig  # Not needed for this demo
 from strands import tool
+
+from konseho.agents.base import AgentWrapper, create_agent
+from konseho.core.council import Council
+from konseho.core.steps import ParallelStep
+from konseho.tools.file_ops import file_write
+from konseho.tools.mcp_search_adapter import (
+    MCPSearchProvider,
+)
+from konseho.tools.search_ops import MockSearchProvider, SearchProvider, web_search
 
 
 class FakeNewsSearchProvider(SearchProvider):
@@ -29,7 +32,7 @@ class FakeNewsSearchProvider(SearchProvider):
     def name(self) -> str:
         return "fake-news"
     
-    def search(self, query: str, max_results: int = 10) -> List[Dict[str, str]]:
+    def search(self, query: str, max_results: int = 10) -> list[dict[str, str]]:
         """Generate fake news-style search results."""
         # Create realistic-looking news results
         base_results = [
@@ -70,7 +73,7 @@ class FakeAcademicSearchProvider(SearchProvider):
     def name(self) -> str:
         return "fake-academic"
     
-    def search(self, query: str, max_results: int = 10) -> List[Dict[str, str]]:
+    def search(self, query: str, max_results: int = 10) -> list[dict[str, str]]:
         """Generate fake academic-style search results."""
         base_results = [
             {
@@ -93,7 +96,7 @@ class FakeAcademicSearchProvider(SearchProvider):
         return base_results[:max_results]
 
 
-def get_search_provider(provider_name: Optional[str] = None) -> SearchProvider:
+def get_search_provider(provider_name: str | None = None) -> SearchProvider:
     """
     Get a search provider based on name or environment configuration.
     
@@ -215,7 +218,7 @@ async def demo_search_providers():
     
     # Use it for search
     mcp_results = web_search("strands agent sdk", provider=mcp_provider)
-    print(f"\nMCP Search Results:")
+    print("\nMCP Search Results:")
     for result in mcp_results['results']:
         print(f"- {result['title']}")
     

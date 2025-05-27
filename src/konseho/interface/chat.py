@@ -1,15 +1,14 @@
 """Terminal chat interface for councils."""
 
-from typing import Optional, Dict, Any
-import asyncio
 from datetime import datetime
+from typing import Any
 
 try:
     from rich.console import Console
-    from rich.panel import Panel
     from rich.live import Live
-    from rich.table import Table
+    from rich.panel import Panel
     from rich.progress import Progress, SpinnerColumn, TextColumn
+    from rich.table import Table
     RICH_AVAILABLE = True
 except ImportError:
     RICH_AVAILABLE = False
@@ -18,7 +17,7 @@ except ImportError:
 class ChatInterface:
     """Terminal interface for interacting with councils."""
     
-    def __init__(self, use_rich: bool = True, save_outputs: bool = False, output_dir: Optional[str] = None):
+    def __init__(self, use_rich: bool = True, save_outputs: bool = False, output_dir: str | None = None):
         """Initialize chat interface.
         
         Args:
@@ -214,7 +213,7 @@ class ChatInterface:
             else:
                 print(f"Error displaying step result: {str(e)}")
     
-    def display_event(self, event: str, data: Dict[str, Any]) -> None:
+    def display_event(self, event: str, data: dict[str, Any]) -> None:
         """Display an event in the interface."""
         timestamp = datetime.now().strftime("%H:%M:%S")
         self._event_log.append({"time": timestamp, "event": event, "data": data})
@@ -226,12 +225,12 @@ class ChatInterface:
             elif event == "step:start":
                 self.console.print(f"\n[yellow]→ Step {data.get('step', '?')}:[/yellow] {data.get('type', 'Unknown')}")
             elif event == "step:complete":
-                self.console.print(f"[green]✓ Step completed[/green]")
+                self.console.print("[green]✓ Step completed[/green]")
                 # Display step results immediately
                 if 'result' in data:
                     self._display_step_result(data['result'])
             elif event == "council:complete":
-                self.console.print(f"\n[bold green]✓ Council completed successfully[/bold green]")
+                self.console.print("\n[bold green]✓ Council completed successfully[/bold green]")
             elif event.endswith(":error"):
                 self.console.print(f"[bold red]✗ Error:[/bold red] {data.get('error', 'Unknown error')}")
         else:
@@ -241,7 +240,7 @@ class ChatInterface:
             else:
                 print(f"[{timestamp}] {event}: {data}")
     
-    def display_result(self, result: Dict[str, Any]) -> None:
+    def display_result(self, result: dict[str, Any]) -> None:
         """Display final result."""
         try:
             # Extract the actual result from the council execution

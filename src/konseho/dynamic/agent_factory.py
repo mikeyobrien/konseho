@@ -1,6 +1,6 @@
 """Factory for creating agents with dynamic personas based on task requirements."""
 
-from typing import List, Dict, Any, Optional
+from typing import Any
 
 from ..agents.base import AgentWrapper, create_agent
 from ..dynamic.analyzer import TaskType
@@ -115,7 +115,7 @@ class DynamicAgentFactory:
             "general": "broad interdisciplinary knowledge and holistic thinking"
         }
     
-    def create_agents(self, analysis: Dict[str, Any]) -> List[AgentWrapper]:
+    def create_agents(self, analysis: dict[str, Any]) -> list[AgentWrapper]:
         """Create agents based on query analysis results."""
         task_type = analysis["task_type"]
         domains = analysis["domains"]
@@ -147,7 +147,7 @@ class DynamicAgentFactory:
         
         return agents
     
-    def _get_base_personas(self, task_type: TaskType, count: int) -> List[Dict[str, str]]:
+    def _get_base_personas(self, task_type: TaskType, count: int) -> list[dict[str, str]]:
         """Get base personas for a task type."""
         templates = self.persona_templates.get(task_type, self.persona_templates[TaskType.GENERAL])
         
@@ -169,7 +169,7 @@ class DynamicAgentFactory:
         
         return personas
     
-    def _customize_for_domains(self, personas: List[Dict[str, str]], domains: List[str]) -> List[Dict[str, str]]:
+    def _customize_for_domains(self, personas: list[dict[str, str]], domains: list[str]) -> list[dict[str, str]]:
         """Customize personas for specific domains."""
         customized = []
         
@@ -192,7 +192,7 @@ class DynamicAgentFactory:
         
         return customized
     
-    def _create_moderator(self) -> Dict[str, str]:
+    def _create_moderator(self) -> dict[str, str]:
         """Create a moderator agent for coordinating discussions."""
         return {
             "name": "Moderator",
@@ -205,7 +205,7 @@ class DynamicAgentFactory:
             )
         }
     
-    def _get_general_personas(self, count: int) -> List[Dict[str, str]]:
+    def _get_general_personas(self, count: int) -> list[dict[str, str]]:
         """Get general-purpose personas when task type is unclear."""
         general_personas = [
             {

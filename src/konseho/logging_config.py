@@ -2,12 +2,12 @@
 
 import logging
 import sys
-from typing import Optional
+
 
 def configure_logging(
     level: str = "INFO",
     show_api_calls: bool = True,
-    api_call_format: Optional[str] = None
+    api_call_format: str | None = None
 ):
     """Configure logging for Konseho applications.
     

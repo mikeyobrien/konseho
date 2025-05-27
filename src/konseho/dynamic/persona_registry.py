@@ -1,7 +1,7 @@
 """Registry of available agent personas and capabilities."""
 
-from typing import Dict, List, Any
 from dataclasses import dataclass, field
+from typing import Any
 
 
 @dataclass
@@ -9,19 +9,19 @@ class PersonaTemplate:
     """Template for an agent persona."""
     name: str
     category: str  # e.g., "technical", "creative", "analytical"
-    expertise: List[str]  # Areas of expertise
+    expertise: list[str]  # Areas of expertise
     personality: str  # e.g., "analytical", "creative", "critical"
     description: str  # Brief description for the model
     system_prompt: str  # Full system prompt
     temperature: float = 0.7
-    tools: List[Any] = field(default_factory=list)  # List of Strands-compatible tools
+    tools: list[Any] = field(default_factory=list)  # List of Strands-compatible tools
 
 
 class PersonaRegistry:
     """Registry of all available agent personas."""
     
     def __init__(self):
-        self.personas: Dict[str, PersonaTemplate] = {}
+        self.personas: dict[str, PersonaTemplate] = {}
         self._initialize_default_personas()
     
     def _initialize_default_personas(self):
@@ -229,15 +229,15 @@ Turn ideas into actionable steps.""",
         """Get a specific persona by name."""
         return self.personas.get(name)
     
-    def get_personas_by_category(self, category: str) -> List[PersonaTemplate]:
+    def get_personas_by_category(self, category: str) -> list[PersonaTemplate]:
         """Get all personas in a category."""
         return [p for p in self.personas.values() if p.category == category]
     
-    def get_personas_by_expertise(self, expertise: str) -> List[PersonaTemplate]:
+    def get_personas_by_expertise(self, expertise: str) -> list[PersonaTemplate]:
         """Get all personas with specific expertise."""
         return [p for p in self.personas.values() if expertise in p.expertise]
     
-    def get_all_personas(self) -> List[PersonaTemplate]:
+    def get_all_personas(self) -> list[PersonaTemplate]:
         """Get all registered personas."""
         return list(self.personas.values())
     

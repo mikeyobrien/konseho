@@ -1,12 +1,12 @@
 """Core tool collections for Konseho agents."""
 
-from typing import List, Dict, Any
 import glob
-import re
 import os
+import re
+from typing import Any
 
 
-def search_files(pattern: str, directory: str = ".") -> List[str]:
+def search_files(pattern: str, directory: str = ".") -> list[str]:
     """Search for files matching a glob pattern.
     
     Args:
@@ -30,7 +30,7 @@ def search_files(pattern: str, directory: str = ".") -> List[str]:
     return sorted(matches)
 
 
-def search_content(regex: str, file_path: str) -> List[Dict[str, Any]]:
+def search_content(regex: str, file_path: str) -> list[dict[str, Any]]:
     """Search file content with regex.
     
     Args:
@@ -43,7 +43,7 @@ def search_content(regex: str, file_path: str) -> List[Dict[str, Any]]:
     matches = []
     
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, encoding='utf-8') as f:
             for i, line in enumerate(f, 1):
                 if re.search(regex, line):
                     matches.append({
@@ -57,7 +57,7 @@ def search_content(regex: str, file_path: str) -> List[Dict[str, Any]]:
     return matches
 
 
-def code_metrics(file_path: str) -> Dict[str, Any]:
+def code_metrics(file_path: str) -> dict[str, Any]:
     """Calculate basic code metrics for a file.
     
     Args:
@@ -76,7 +76,7 @@ def code_metrics(file_path: str) -> Dict[str, Any]:
     }
     
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, encoding='utf-8') as f:
             for line in f:
                 metrics["total_lines"] += 1
                 stripped = line.strip()

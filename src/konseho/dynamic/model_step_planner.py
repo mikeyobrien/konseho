@@ -1,8 +1,9 @@
 """Step planner that uses model-generated workflow specifications."""
 
-from typing import List, Dict, Any
-from ..core.steps import Step, DebateStep, ParallelStep, SplitStep
+from typing import Any
+
 from ..agents.base import AgentWrapper
+from ..core.steps import DebateStep, ParallelStep, SplitStep, Step
 
 
 class ModelStepPlanner:
@@ -10,9 +11,9 @@ class ModelStepPlanner:
     
     def create_steps_from_spec(
         self, 
-        workflow_specs: List[Dict[str, Any]], 
-        agents: List[AgentWrapper]
-    ) -> List[Step]:
+        workflow_specs: list[dict[str, Any]], 
+        agents: list[AgentWrapper]
+    ) -> list[Step]:
         """Create steps from model-generated workflow specification.
         
         Args:
@@ -93,10 +94,10 @@ class ModelStepPlanner:
     def _create_task_splitter(
         self, 
         description: str, 
-        participants: List[str]
+        participants: list[str]
     ) -> callable:
         """Create a task splitter function for parallel steps."""
-        def splitter(task: str, n: int) -> List[str]:
+        def splitter(task: str, n: int) -> list[str]:
             """Split task based on participant roles."""
             if len(participants) == n:
                 # Customize task for each participant

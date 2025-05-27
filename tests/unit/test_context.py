@@ -1,6 +1,5 @@
 """Unit tests for Context management."""
 
-import pytest
 import json
 from datetime import datetime
 

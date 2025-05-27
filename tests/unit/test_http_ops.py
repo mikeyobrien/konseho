@@ -1,8 +1,6 @@
 """Tests for HTTP operation tools."""
 
-import pytest
-import json
-from unittest.mock import patch, Mock
+from unittest.mock import Mock, patch
 
 from konseho.tools.http_ops import http_get, http_post
 

@@ -1,12 +1,12 @@
 """Unit tests for task splitting in SplitStep."""
 
-import pytest
-import asyncio
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import patch
 
-from konseho.core.steps import SplitStep
-from konseho.core.context import Context
+import pytest
+
 from konseho.agents.base import AgentWrapper
+from konseho.core.context import Context
+from konseho.core.steps import SplitStep
 from tests.fixtures import MockStrandsAgent
 
 

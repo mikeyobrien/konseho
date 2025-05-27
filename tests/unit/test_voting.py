@@ -1,12 +1,12 @@
 """Unit tests for voting mechanisms in DebateStep."""
 
-import pytest
-import asyncio
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import AsyncMock, patch
 
-from konseho.core.steps import DebateStep
-from konseho.core.context import Context
+import pytest
+
 from konseho.agents.base import AgentWrapper
+from konseho.core.context import Context
+from konseho.core.steps import DebateStep
 from tests.fixtures import MockStrandsAgent
 
 

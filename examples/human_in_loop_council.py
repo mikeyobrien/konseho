@@ -2,10 +2,11 @@
 """Example: Human-in-the-Loop Council for collaborative decision making."""
 
 import asyncio
-from konseho import Council, DebateStep, ParallelStep, Context
+
+from examples.agents import CoderAgent, PlannerAgent, ReviewerAgent
+from konseho import Council, DebateStep, ParallelStep
 from konseho.agents.base import AgentWrapper
 from konseho.agents.human import HumanAgent
-from examples.agents import PlannerAgent, CoderAgent, ReviewerAgent
 
 
 async def main():

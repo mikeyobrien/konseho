@@ -1,12 +1,12 @@
 """MCP integration using Strands SDK's built-in MCP support."""
 
-import os
 import logging
-from typing import Dict, List, Any, Optional, Callable
-from pathlib import Path
+import os
+from collections.abc import Callable
+from typing import Any
 
 try:
-    from mcp import stdio_client, StdioServerParameters
+    from mcp import StdioServerParameters, stdio_client
     from strands.tools.mcp import MCPClient
     MCP_AVAILABLE = True
 except ImportError:
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 class StrandsMCPManager:
     """Manage MCP servers using Strands' built-in MCP support."""
     
-    def __init__(self, config_path: Optional[str] = None):
+    def __init__(self, config_path: str | None = None):
         """Initialize MCP manager.
         
         Args:
@@ -34,9 +34,9 @@ class StrandsMCPManager:
             return
             
         self.config_manager = MCPConfigManager(config_path)
-        self.clients: Dict[str, MCPClient] = {}
+        self.clients: dict[str, MCPClient] = {}
         
-    def connect_server(self, server_name: str) -> Optional[MCPClient]:
+    def connect_server(self, server_name: str) -> MCPClient | None:
         """Connect to an MCP server.
         
         Args:
@@ -91,7 +91,7 @@ class StrandsMCPManager:
             logger.error(f"Failed to connect to MCP server {server_name}: {e}")
             return None
     
-    def get_tools(self, server_name: str) -> List[Any]:
+    def get_tools(self, server_name: str) -> list[Any]:
         """Get tools from a specific MCP server.
         
         Args:
@@ -116,7 +116,7 @@ class StrandsMCPManager:
             logger.error(f"Failed to get tools from {server_name}: {e}")
             return []
     
-    def get_search_tool(self, server_name: str = None) -> Optional[Callable]:
+    def get_search_tool(self, server_name: str = None) -> Callable | None:
         """Get a search tool from MCP servers.
         
         Args:
@@ -148,12 +148,12 @@ class StrandsMCPManager:
                     # Try to check docstring
                     doc = getattr(tool, '__doc__', '')
                     if doc and 'search' in doc.lower():
-                        logger.info(f"Found search tool by docstring")
+                        logger.info("Found search tool by docstring")
                         return tool
                         
                 # If it's the first tool from brave-search, assume it's the search tool
                 if server_name == "brave-search" and tools.index(tool) == 0:
-                    logger.info(f"Using first tool from brave-search as search tool")
+                    logger.info("Using first tool from brave-search as search tool")
                     return tool
                     
             return None

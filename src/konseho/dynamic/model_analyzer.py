@@ -1,13 +1,11 @@
 """Model-based query analyzer using LLM for sophisticated analysis."""
 
-import json
 import asyncio
-from typing import Dict, Any, List, Optional
-from enum import Enum
+import json
+from typing import Any
 
 from ..agents.base import create_agent
 from .analyzer import TaskType
-
 
 ANALYZER_PROMPT = """You are a query analyzer for a multi-agent council system. Your job is to analyze user queries and determine the optimal configuration for a council of AI agents to solve the task.
 
@@ -94,7 +92,7 @@ Now analyze the following query and return ONLY the JSON response, no additional
 class ModelBasedAnalyzer:
     """Uses an LLM to analyze queries and suggest council configurations."""
     
-    def __init__(self, model: Optional[str] = None, temperature: float = 0.3):
+    def __init__(self, model: str | None = None, temperature: float = 0.3):
         """Initialize the analyzer.
         
         Args:
@@ -119,7 +117,7 @@ class ModelBasedAnalyzer:
             model=model  # Pass the model parameter to create_agent
         )
     
-    async def analyze(self, query: str) -> Dict[str, Any]:
+    async def analyze(self, query: str) -> dict[str, Any]:
         """Analyze a query using the LLM.
         
         Args:
@@ -208,7 +206,7 @@ class ModelBasedAnalyzer:
 class ModelAnalyzer:
     """Model-based query analyzer (no fallback)."""
     
-    def __init__(self, model: Optional[str] = None, temperature: float = 0.3):
+    def __init__(self, model: str | None = None, temperature: float = 0.3):
         """Initialize the analyzer.
         
         Args:
@@ -217,7 +215,7 @@ class ModelAnalyzer:
         """
         self.model_analyzer = ModelBasedAnalyzer(model=model, temperature=temperature)
     
-    async def analyze(self, query: str) -> Dict[str, Any]:
+    async def analyze(self, query: str) -> dict[str, Any]:
         """Analyze query using model-based analysis.
         
         Model-based analysis is required. There is no fallback.

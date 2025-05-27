@@ -1,10 +1,11 @@
 """Tests for search tool."""
 
-import pytest
 import os
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
-from konseho.tools.search_ops import web_search, SearchProvider, MockSearchProvider
+import pytest
+
+from konseho.tools.search_ops import MockSearchProvider, SearchProvider, web_search
 
 
 class TestSearchProvider:

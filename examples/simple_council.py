@@ -1,7 +1,8 @@
 """Simple example showing <10 lines council creation."""
 
 from strands import Agent
-from konseho import Council, DebateStep, AgentWrapper
+
+from konseho import AgentWrapper, Council, DebateStep
 
 # Create agents and council in under 10 lines!
 agent1 = Agent(model="us.anthropic.claude-3-5-haiku-20241022-v1:0", tools=[])

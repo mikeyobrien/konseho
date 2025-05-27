@@ -1,13 +1,13 @@
 """Async execution engine for councils."""
 
 import asyncio
-from typing import List, Dict, Any, Optional, Callable, Union, TYPE_CHECKING
-from collections import Counter
 import logging
+from collections import Counter
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 from ..core.context import Context
 from ..core.steps import Step
-from .events import EventType, CouncilEvent, EventEmitter
 
 if TYPE_CHECKING:
     from ..core.council import Council
@@ -22,7 +22,7 @@ class StepExecutor:
         self,
         error_strategy: str = "halt",
         retry_attempts: int = 2,
-        event_handler: Optional[Callable] = None
+        event_handler: Callable | None = None
     ):
         """Initialize step executor.
         
@@ -37,10 +37,10 @@ class StepExecutor:
     
     async def execute_parallel(
         self,
-        agents: List[Any],
+        agents: list[Any],
         task: str,
         context: Context
-    ) -> List[Any]:
+    ) -> list[Any]:
         """Execute agents in parallel with error handling."""
         self.event_handler("parallel:start", {
             "agent_count": len(agents),
@@ -160,9 +160,9 @@ class AsyncExecutor:
         """
         self.max_concurrent = max_concurrent
         self._semaphore = asyncio.Semaphore(max_concurrent)
-        self._active_tasks: Dict[str, asyncio.Task] = {}
+        self._active_tasks: dict[str, asyncio.Task] = {}
     
-    async def execute_council(self, council: "Council", task: str) -> Dict[str, Any]:
+    async def execute_council(self, council: "Council", task: str) -> dict[str, Any]:
         """Execute a council with concurrency control."""
         async with self._semaphore:
             logger.info(f"Executing council: {council.name}")
@@ -176,10 +176,10 @@ class AsyncExecutor:
     
     async def execute_steps(
         self,
-        steps: List[Step],
+        steps: list[Step],
         task: str,
         context: Context
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Execute multiple steps with concurrency control."""
         async with self._semaphore:
             step_tasks = []
@@ -202,15 +202,15 @@ class AsyncExecutor:
     
     async def execute_many(
         self,
-        councils: List["Council"],
-        tasks: List[str]
-    ) -> List[Dict[str, Any]]:
+        councils: list["Council"],
+        tasks: list[str]
+    ) -> list[dict[str, Any]]:
         """Execute multiple councils in parallel."""
         if len(councils) != len(tasks):
             raise ValueError("Number of councils must match number of tasks")
         
         execution_tasks = []
-        for council, task in zip(councils, tasks):
+        for council, task in zip(councils, tasks, strict=False):
             execution_task = self.execute_council(council, task)
             execution_tasks.append(execution_task)
         
@@ -238,7 +238,7 @@ class DecisionProtocol:
         self,
         strategy: str = "majority",
         threshold: float = 0.5,
-        moderator: Optional[Any] = None
+        moderator: Any | None = None
     ):
         """Initialize decision protocol.
         
@@ -251,7 +251,7 @@ class DecisionProtocol:
         self.threshold = threshold
         self.moderator = moderator
     
-    async def decide(self, proposals: Dict[str, str]) -> Dict[str, Any]:
+    async def decide(self, proposals: dict[str, str]) -> dict[str, Any]:
         """Make a decision based on proposals."""
         if self.strategy == "majority":
             return await self._majority_vote(proposals)
@@ -262,7 +262,7 @@ class DecisionProtocol:
         else:
             raise ValueError(f"Unknown decision strategy: {self.strategy}")
     
-    async def _majority_vote(self, proposals: Dict[str, str]) -> Dict[str, Any]:
+    async def _majority_vote(self, proposals: dict[str, str]) -> dict[str, Any]:
         """Simple majority voting."""
         # Count identical proposals
         proposal_counts = Counter(proposals.values())
@@ -276,7 +276,7 @@ class DecisionProtocol:
             "strategy": "majority"
         }
     
-    async def _consensus_decision(self, proposals: Dict[str, str]) -> Dict[str, Any]:
+    async def _consensus_decision(self, proposals: dict[str, str]) -> dict[str, Any]:
         """Consensus-based decision with threshold."""
         proposal_counts = Counter(proposals.values())
         total_proposals = len(proposals)
@@ -303,7 +303,7 @@ class DecisionProtocol:
             "consensus_reached": False
         }
     
-    async def _moderator_decision(self, proposals: Dict[str, str]) -> Dict[str, Any]:
+    async def _moderator_decision(self, proposals: dict[str, str]) -> dict[str, Any]:
         """Moderator makes the final decision."""
         if not self.moderator:
             raise ValueError("Moderator required for moderator strategy")

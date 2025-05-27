@@ -1,14 +1,15 @@
 """Search provider configuration for Konseho."""
 
 import os
-from typing import Optional
-from konseho.tools.search_ops import SearchProvider, MockSearchProvider
-from konseho.tools.mcp_search_adapter import MCPSearchProvider, create_mcp_search_provider
+
 from konseho.mcp.config import MCPConfigManager
-from konseho.mcp.server import MCPServerManager
+from konseho.tools.mcp_search_adapter import (
+    MCPSearchProvider,
+)
+from konseho.tools.search_ops import MockSearchProvider, SearchProvider
 
 # Global search provider instance
-_search_provider: Optional[SearchProvider] = None
+_search_provider: SearchProvider | None = None
 
 
 def get_search_provider() -> SearchProvider:
@@ -70,7 +71,7 @@ def set_search_provider(provider: SearchProvider):
     _search_provider = provider
 
 
-def _try_mcp_auto_detect() -> Optional[SearchProvider]:
+def _try_mcp_auto_detect() -> SearchProvider | None:
     """Try to auto-detect search provider from MCP configuration.
     
     Returns:
@@ -97,7 +98,7 @@ def _try_mcp_auto_detect() -> Optional[SearchProvider]:
     return None
 
 
-def _create_mcp_provider(server_name: str) -> Optional[SearchProvider]:
+def _create_mcp_provider(server_name: str) -> SearchProvider | None:
     """Create an MCP-based search provider.
     
     Args:
@@ -184,7 +185,7 @@ Note: Using mock Brave Search (real MCP server not available)."""
 
 
 # Convenience function for getting search provider by name
-def get_provider_by_name(name: str) -> Optional[SearchProvider]:
+def get_provider_by_name(name: str) -> SearchProvider | None:
     """Get a search provider by name.
     
     Args:

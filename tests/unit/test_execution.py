@@ -1,16 +1,14 @@
 """Unit tests for execution engine."""
 
-import pytest
 import asyncio
-from unittest.mock import Mock, AsyncMock, patch
-from dataclasses import dataclass
-from typing import Dict, Any, List
-from enum import Enum
+from typing import Any
 
-from konseho.execution.executor import StepExecutor, AsyncExecutor
-from konseho.execution.events import EventType, CouncilEvent, EventEmitter
+import pytest
+
 from konseho.core.context import Context
-from konseho.core.steps import Step, ParallelStep, DebateStep
+from konseho.core.steps import Step
+from konseho.execution.events import CouncilEvent, EventEmitter, EventType
+from konseho.execution.executor import AsyncExecutor, StepExecutor
 
 
 class TestStepExecutor:
@@ -58,7 +56,7 @@ class TestStepExecutor:
         """Events from parallel execution maintain correct order."""
         events = []
         
-        def event_handler(event_type: str, data: Dict[str, Any]):
+        def event_handler(event_type: str, data: dict[str, Any]):
             events.append((event_type, data))
         
         class MockAgent:
@@ -282,7 +280,7 @@ class TestEventSystem:
         emitter = EventEmitter()
         async_events = []
         
-        async def async_handler(event_type: str, data: Dict[str, Any]):
+        async def async_handler(event_type: str, data: dict[str, Any]):
             await asyncio.sleep(0.01)  # Simulate async work
             async_events.append((event_type, data))
         

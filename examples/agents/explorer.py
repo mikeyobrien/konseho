@@ -1,7 +1,8 @@
 """Explorer agent for codebase analysis and exploration."""
 
-from typing import List, Optional
+
 from strands import Agent
+
 from konseho.config import create_model_from_config
 
 
@@ -11,9 +12,9 @@ class ExplorerAgent(Agent):
     def __init__(
         self,
         name: str = "Explorer",
-        model: Optional[str] = None,
+        model: str | None = None,
         temperature: float = 0.3,
-        tools: Optional[List[str]] = None
+        tools: list[str] | None = None
     ):
         """Initialize the Explorer agent.
         
