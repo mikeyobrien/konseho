@@ -7,7 +7,7 @@ import os
 from strands import tool
 
 from konseho.agents.base import AgentWrapper, create_agent
-from konseho.core.council import Council
+from konseho.factories import CouncilFactory
 from konseho.core.steps import ParallelStep
 from konseho.tools.search_ops import SearchProvider
 from konseho.tools.search_ops import web_search as base_web_search
@@ -103,16 +103,19 @@ async def main():
     )
     
     # Create a simple council
-    council = Council(
+    factory = CouncilFactory()
+
+    council = factory.create_council(
         name="Research Council",
         steps=[
             ParallelStep(
-                agents=[researcher, fact_checker],
+        agents=[researcher, fact_checker],
                 task_splitter=lambda task, n: [
                     f"Research: {task}",
                     f"Verify facts about: {task}"
                 ]
-            )
+
+    )
         ]
     )
     

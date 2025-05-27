@@ -16,7 +16,7 @@ import os
 from strands import tool
 
 from konseho.agents.base import AgentWrapper, create_agent
-from konseho.core.council import Council
+from konseho.factories import CouncilFactory
 from konseho.core.steps import ParallelStep
 from konseho.tools.file_ops import file_write
 from konseho.tools.mcp_search_adapter import (
@@ -257,16 +257,19 @@ async def demo_search_providers():
     )
     
     # Create research council
-    council = Council(
+    factory = CouncilFactory()
+
+    council = factory.create_council(
         name="Mixed Research Council",
         steps=[
             ParallelStep(
-                agents=[news_researcher, academic_researcher],
+        agents=[news_researcher, academic_researcher],
                 task_splitter=lambda task, n: [
                     f"Find recent news about {task}",
                     f"Find academic research on {task}"
                 ]
-            )
+
+    )
         ]
     )
     

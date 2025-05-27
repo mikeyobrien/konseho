@@ -4,7 +4,8 @@ import os
 
 from strands import Agent
 
-from konseho import AgentWrapper, Council, DebateStep
+from konseho import AgentWrapper, DebateStep
+from konseho.factories import CouncilFactory
 
 print("=== Konseho Council Example ===\n")
 
@@ -43,11 +44,13 @@ agent1 = Agent(model=model_id, tools=[])
 agent2 = Agent(model=model_id, tools=[])
 
 # Create council with debate step
-council = Council(
+factory = CouncilFactory()
+
+council = factory.create_council(
     name="example_debate",
     steps=[
         DebateStep(
-            agents=[
+    agents=[
                 AgentWrapper(agent1, "Expert1"),
                 AgentWrapper(agent2, "Expert2")
             ],

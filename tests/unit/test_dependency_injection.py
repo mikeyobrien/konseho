@@ -1,6 +1,5 @@
 """Tests for dependency injection in Council."""
 
-
 import pytest
 
 from konseho.adapters import MockAgent, MockEventEmitter, MockOutputManager
@@ -15,17 +14,11 @@ from konseho.protocols import IContext, IEventEmitter, IOutputManager
 class TestCouncilDependencyInjection:
     """Test dependency injection in Council class."""
 
-    def test_legacy_initialization_still_works(self):
-        """Test that old initialization method still works."""
-        # Create council without dependencies parameter
-        council = Council(
-            name="legacy_council", agents=[MockAgent("test")], save_outputs=False
-        )
-
-        # Verify default dependencies were created
-        assert isinstance(council.context, Context)
-        assert isinstance(council._event_emitter, EventEmitter)
-        assert council.output_manager is None  # save_outputs=False
+    def test_council_requires_dependencies(self):
+        """Test that Council requires dependencies."""
+        # Create council without dependencies parameter should fail
+        with pytest.raises(ValueError, match="Council requires dependencies"):
+            Council(name="test_council", agents=[MockAgent("test")])
 
     def test_dependency_injection_overrides_defaults(self):
         """Test that injected dependencies override defaults."""

@@ -6,7 +6,7 @@ from typing import Any
 from konseho.adapters import AgentAdapter, MockAgent, MockStep, StepAdapter
 from konseho.agents.base import create_agent
 from konseho.core.context import Context
-from konseho.core.council import Council
+from konseho.factories import CouncilFactory
 from konseho.core.steps import DebateStep
 from konseho.protocols import IAgent, IContext, IStep
 
@@ -33,7 +33,11 @@ async def example_with_mock_agents():
     print("✓ MockStep implements IStep protocol")
 
     # Use mocks in a council
-    council = Council(name="mock_council", steps=[mock_step])
+    factory = CouncilFactory()
+
+    council = factory.create_council(
+        name="mock_council", steps=[mock_step]
+    )
 
     result = await council.execute("Build a recommendation system")
     print(f"\nMock Council Result: {result}")

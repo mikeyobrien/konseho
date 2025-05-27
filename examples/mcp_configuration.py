@@ -14,7 +14,8 @@ import json
 import tempfile
 from pathlib import Path
 
-from konseho import Agent, Council, DebateStep
+from konseho import Agent, DebateStep
+from konseho.factories import CouncilFactory
 from konseho.mcp import MCP
 
 
@@ -144,13 +145,16 @@ async def example_persona_with_mcp_tools():
     )
     
     # Create a council with these specialized agents
-    council = Council(
+    factory = CouncilFactory()
+
+    council = factory.create_council(
         agents=[analyst, reviewer],
         steps=[
             DebateStep(
                 "Research the topic and review any code examples",
                 participants=["Research Analyst", "Code Reviewer"]
-            )
+
+    )
         ]
     )
     

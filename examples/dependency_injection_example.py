@@ -10,9 +10,9 @@ from konseho.core.steps import DebateStep
 from konseho.factories import CouncilDependencies, CouncilFactory
 
 
-async def example_legacy_initialization():
-    """Example showing the traditional way of creating a Council."""
-    print("=== Legacy Council Initialization ===")
+async def example_basic_factory():
+    """Example showing basic factory usage."""
+    print("=== Basic Factory Usage ===")
 
     # Create agents
     agents = [
@@ -21,16 +21,14 @@ async def example_legacy_initialization():
         MockAgent("designer", response="Design the interface"),
     ]
 
-    # Create council the old way (still works)
-    council = Council(
-        name="legacy_council",
-        agents=agents,
-        save_outputs=True,
-        output_dir="legacy_outputs",
+    # Create council using factory (the standard way)
+    factory = CouncilFactory()
+    council = factory.create_council(
+        name="basic_council", agents=agents, save_outputs=True, output_dir="outputs"
     )
 
     result = await council.execute("Create a new product")
-    print(f"Legacy council completed: {result.get('results', {}).get('step_0', {})}")
+    print(f"Council completed: {result.get('results', {}).get('step_0', {})}")
 
 
 async def example_dependency_injection():
@@ -174,7 +172,7 @@ def example_custom_dependency_injection():
 
 async def main():
     """Run all examples."""
-    await example_legacy_initialization()
+    await example_basic_factory()
     await example_dependency_injection()
     await example_factory_pattern()
     await example_testing_with_mocks()
@@ -184,7 +182,7 @@ async def main():
     print("✓ Easy testing with mock dependencies")
     print("✓ Swappable implementations at runtime")
     print("✓ Clear separation of concerns")
-    print("✓ Backward compatibility maintained")
+    print("✓ Enforces proper dependency management")
     print("✓ Follows SOLID principles")
 
 

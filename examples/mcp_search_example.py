@@ -1,7 +1,7 @@
 """Example of using MCP search servers with Konseho agents."""
 
 from konseho.agents.base import AgentWrapper, create_agent
-from konseho.core.council import Council
+from konseho.factories import CouncilFactory
 from konseho.core.steps import ParallelStep
 from konseho.tools.file_ops import file_write
 from konseho.tools.mcp_search_adapter import (
@@ -94,16 +94,19 @@ def demo_mcp_search_integration():
     )
     
     # Create research council
-    research_council = Council(
+    factory = CouncilFactory()
+
+    research_council = factory.create_council(
         name="MCP Research Council",
         steps=[
             ParallelStep(
-                agents=[researcher1, researcher2],
+        agents=[researcher1, researcher2],
                 task_splitter=lambda task, n: [
                     f"Search for academic research on: {task}",
                     f"Search for industry applications of: {task}"
                 ]
-            )
+
+    )
         ]
     )
     

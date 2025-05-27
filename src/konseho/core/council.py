@@ -8,10 +8,7 @@ from typing import Any
 from strands import Agent
 
 from ..agents.base import AgentWrapper
-from ..execution.events import EventEmitter
 from ..factories import CouncilDependencies
-from .context import Context
-from .output_manager import OutputManager
 from .steps import DebateStep, Step
 
 logger = logging.getLogger(__name__)
@@ -25,12 +22,9 @@ class Council:
         name: str = "council",
         steps: list[Step] | None = None,
         agents: list[Agent | AgentWrapper] | None = None,
-        context: Context | None = None,
         dependencies: CouncilDependencies | None = None,
         error_strategy: str = "halt",
         workflow: str = "sequential",
-        save_outputs: bool = False,
-        output_dir: str | Path | None = None,
     ):
         """Initialize a council.
 
@@ -38,31 +32,24 @@ class Council:
             name: Council identifier
             steps: Ordered list of execution steps
             agents: List of agents (creates a DebateStep if provided without steps)
-            context: Shared context (created if not provided, ignored if dependencies provided)
-            dependencies: Container with all dependencies (optional, for dependency injection)
+            dependencies: Container with all dependencies (required)
             error_strategy: How to handle errors (halt, continue, retry, fallback)
             workflow: Workflow type (sequential, iterative)
-            save_outputs: Whether to automatically save outputs
-            output_dir: Directory for saving outputs (default: "council_outputs")
         """
+        if dependencies is None:
+            raise ValueError(
+                "Council requires dependencies. Use CouncilFactory or provide CouncilDependencies."
+            )
+
         self.name = name
         self.error_strategy = error_strategy
         self.workflow = workflow
-        self.save_outputs = save_outputs
 
-        # Handle dependency injection
-        if dependencies:
-            # Use injected dependencies
-            self.context = dependencies.context
-            self._event_emitter = dependencies.event_emitter
-            self.output_manager = dependencies.output_manager
-        else:
-            # Legacy initialization (backward compatibility)
-            self.context = context or Context()
-            self._event_emitter = EventEmitter()
-            self.output_manager = (
-                OutputManager(output_dir or "council_outputs") if save_outputs else None
-            )
+        # Use injected dependencies
+        self.context = dependencies.context
+        self._event_emitter = dependencies.event_emitter
+        self.output_manager = dependencies.output_manager
+        self.save_outputs = dependencies.output_manager is not None
 
         # Handle initialization with agents or steps
         if steps is not None:
@@ -196,7 +183,7 @@ class Council:
                         agent_names.append(str(agent))
         return list(set(agent_names))  # Remove duplicates
 
-    def handle_error(self, error: Exception, context: Context) -> None:
+    def handle_error(self, error: Exception, context: Any) -> None:
         """Handle errors according to the configured strategy.
 
         Args:

@@ -2,7 +2,7 @@
 
 
 from konseho.agents.base import AgentWrapper, create_agent
-from konseho.core.council import Council
+from konseho.factories import CouncilFactory
 from konseho.core.steps import ParallelStep
 from konseho.tools.mcp_adapter import MCPToolAdapter, adapt_mcp_tools, create_mcp_tool
 
@@ -168,7 +168,9 @@ def demo_generic_mcp_adapter():
     )
     
     # Create council
-    research_council = Council(
+    factory = CouncilFactory()
+
+    research_council = factory.create_council(
         name="MCP Research Council",
         steps=[
             ParallelStep(

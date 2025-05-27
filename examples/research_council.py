@@ -4,7 +4,8 @@
 import asyncio
 
 from examples.agents import ExplorerAgent, PlannerAgent
-from konseho import Council, DebateStep, SplitStep
+from konseho import DebateStep, SplitStep
+from konseho.factories import CouncilFactory
 from konseho.agents.base import AgentWrapper
 
 
@@ -16,7 +17,9 @@ async def main():
     planner = AgentWrapper(PlannerAgent(), name="LeadPlanner")
     
     # Create a council with dynamic work splitting
-    council = Council(
+    factory = CouncilFactory()
+
+    council = factory.create_council(
         name="ResearchCouncil",
         steps=[
             # Step 1: Split research task across multiple agents
@@ -25,11 +28,12 @@ async def main():
                 min_agents=3,
                 max_agents=5,
                 split_strategy="auto"
-            ),
+
+    ),
             
             # Step 2: Synthesize findings with debate
             DebateStep(
-                agents=[
+        agents=[
                     AgentWrapper(PlannerAgent(name="Synthesizer1"), name="Synthesizer1"),
                     AgentWrapper(PlannerAgent(name="Synthesizer2"), name="Synthesizer2"),
                 ],

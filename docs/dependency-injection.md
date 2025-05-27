@@ -33,14 +33,19 @@ CouncilFactory
 
 ## Usage
 
-### Traditional Initialization (Still Supported)
+### Standard Pattern with Factory
 
 ```python
-from konseho.core.council import Council
+from konseho.factories import CouncilFactory
 from konseho.agents.base import create_agent
 
-# Legacy way still works
-council = Council(
+# Create agents
+agent1 = await create_agent("agent1")
+agent2 = await create_agent("agent2")
+
+# Use factory to create council
+factory = CouncilFactory()
+council = factory.create_council(
     name="my_council",
     agents=[agent1, agent2],
     save_outputs=True,
@@ -50,7 +55,7 @@ council = Council(
 result = await council.execute("task")
 ```
 
-### Dependency Injection Pattern
+### Advanced Dependency Injection
 
 ```python
 from konseho.factories import CouncilFactory, CouncilDependencies
@@ -205,27 +210,33 @@ deps = CouncilDependencies(
 
 ## Migration Guide
 
-### Step 1: Identify Dependencies
+### Step 1: Update Direct Council Creation
 
 If you have code that creates councils directly:
 
 ```python
-# Old code
+# Old code (no longer supported)
 council = Council(name="my_council", agents=agents)
+
+# New code - use factory
+factory = CouncilFactory()
+council = factory.create_council(name="my_council", agents=agents)
 ```
 
-### Step 2: Extract Dependencies (Optional)
+### Step 2: Extract Dependencies for Testing
 
-For better testability, extract dependencies:
+For better testability, use custom dependencies:
 
 ```python
-# Better for testing
-deps = CouncilDependencies()
-council = Council(
-    name="my_council",
-    agents=agents,
-    dependencies=deps
+# Create custom dependencies
+deps = CouncilDependencies(
+    event_emitter=MockEventEmitter(),
+    output_manager=MockOutputManager()
 )
+
+# Use factory with custom dependencies
+factory = CouncilFactory(dependencies=deps)
+council = factory.create_council(name="my_council", agents=agents)
 ```
 
 ### Step 3: Use Factory for Multiple Councils
@@ -269,7 +280,7 @@ def test_council_behavior():
 2. **Flexibility** - Swap implementations without changing Council code
 3. **Separation of Concerns** - Council focuses on orchestration, not creating dependencies
 4. **SOLID Principles** - Follows Dependency Inversion Principle
-5. **Backward Compatibility** - Old code continues to work
+5. **Consistency** - Enforces proper dependency management across the codebase
 
 ## Best Practices
 
@@ -277,4 +288,4 @@ def test_council_behavior():
 2. **Mock in Tests** - Always use mocks for unit tests
 3. **Custom Implementations** - Create custom implementations for special requirements
 4. **Dependency Containers** - Group related dependencies in CouncilDependencies
-5. **Avoid Mixed Patterns** - Either use dependency injection or legacy initialization, not both
+5. **Factory Pattern** - Always use CouncilFactory to create Council instances

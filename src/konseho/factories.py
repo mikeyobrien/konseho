@@ -81,7 +81,6 @@ class CouncilFactory:
         workflow: str = "sequential",
         save_outputs: bool = False,
         output_dir: str | Path | None = None,
-        **kwargs,
     ) -> Any:  # Returns Council but avoiding circular import
         """Create a Council instance with injected dependencies.
 
@@ -93,7 +92,6 @@ class CouncilFactory:
             workflow: Workflow type (sequential, iterative)
             save_outputs: Whether to automatically save outputs
             output_dir: Directory for saving outputs
-            **kwargs: Additional arguments passed to Council
 
         Returns:
             Council instance with injected dependencies
@@ -102,9 +100,9 @@ class CouncilFactory:
 
         # Handle output manager creation if needed
         dependencies = self.dependencies
-        if save_outputs and not dependencies.output_manager and output_dir:
+        if save_outputs and not dependencies.output_manager:
             dependencies = CouncilDependencies.with_output_manager(
-                output_dir=output_dir,
+                output_dir=output_dir or "council_outputs",
                 context=dependencies.context,
                 event_emitter=dependencies.event_emitter,
             )
@@ -116,9 +114,6 @@ class CouncilFactory:
             dependencies=dependencies,
             error_strategy=error_strategy,
             workflow=workflow,
-            save_outputs=save_outputs,
-            output_dir=output_dir,
-            **kwargs,
         )
 
     def create_test_council(
