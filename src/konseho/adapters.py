@@ -208,15 +208,17 @@ class MockAgent(IAgent):
 class MockStep(IStep):
     """Mock step for testing purposes."""
 
-    def __init__(self, name: str, output: str = "Mock output"):
+    def __init__(self, name: str, output: str = "Mock output", should_fail: bool = False):
         """Initialize mock step.
 
         Args:
             name: Step name
             output: Fixed output to return
+            should_fail: Whether step should raise an error
         """
         self._name = name
         self._output = output
+        self._should_fail = should_fail
 
     @property
     def name(self) -> str:
@@ -225,6 +227,8 @@ class MockStep(IStep):
 
     async def execute(self, task: str, context: IContext) -> IStepResult:
         """Execute mock step."""
+        if self._should_fail:
+            raise RuntimeError(f"Mock step {self._name} failed as requested")
         return MockStepResult(self._output)
 
     def validate(self) -> list[str]:
@@ -310,6 +314,8 @@ class MockOutputManager:
     def __init__(self):
         """Initialize mock output manager."""
         self.saved_outputs: list[dict[str, Any]] = []
+        self.outputs = []  # Alias for compatibility
+        self.step_results: list[Any] = []
 
     def save_formatted_output(
         self,
@@ -319,14 +325,14 @@ class MockOutputManager:
         metadata: dict[str, Any] | None = None,
     ) -> str:
         """Mock save output and return fake path."""
-        self.saved_outputs.append(
-            {
-                "task": task,
-                "result": result,
-                "council_name": council_name,
-                "metadata": metadata,
-            }
-        )
+        output_data = {
+            "task": task,
+            "result": result,
+            "council_name": council_name,
+            "metadata": metadata,
+        }
+        self.saved_outputs.append(output_data)
+        self.outputs.append(output_data)  # Keep both in sync
         return f"/mock/outputs/{council_name}_{len(self.saved_outputs)}.json"
 
     def clean_old_outputs(self, max_age_days: int = 7) -> int:

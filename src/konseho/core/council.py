@@ -2,29 +2,33 @@
 
 import asyncio
 import logging
-from pathlib import Path
-from typing import Any
+from typing import Any, List, Optional
 
 from strands import Agent
 
 from ..agents.base import AgentWrapper
 from ..factories import CouncilDependencies
+from ..protocols import IStep, IStepResult, IAgent
 from .steps import DebateStep, Step
+from .error_handler import ErrorHandler, ErrorStrategy
+from .step_orchestrator import StepOrchestrator
+from .moderator_assigner import ModeratorAssigner
 
 logger = logging.getLogger(__name__)
 
 
 class Council:
-    """Orchestrates multiple agents working together through defined steps."""
+    """Coordinates multi-agent workflows through composition of specialized components."""
 
     def __init__(
         self,
         name: str = "council",
-        steps: list[Step] | None = None,
-        agents: list[Agent | AgentWrapper] | None = None,
-        dependencies: CouncilDependencies | None = None,
+        steps: Optional[List[Step]] = None,
+        agents: Optional[List[Agent | AgentWrapper]] = None,
+        dependencies: Optional[CouncilDependencies] = None,
         error_strategy: str = "halt",
         workflow: str = "sequential",
+        max_retries: int = 3,
     ):
         """Initialize a council.
 
@@ -35,6 +39,7 @@ class Council:
             dependencies: Container with all dependencies (required)
             error_strategy: How to handle errors (halt, continue, retry, fallback)
             workflow: Workflow type (sequential, iterative)
+            max_retries: Maximum retry attempts for retry strategy
         """
         if dependencies is None:
             raise ValueError(
@@ -42,10 +47,10 @@ class Council:
             )
 
         self.name = name
-        self.error_strategy = error_strategy
         self.workflow = workflow
-
-        # Use injected dependencies
+        self.dependencies = dependencies
+        
+        # Store core dependencies
         self.context = dependencies.context
         self._event_emitter = dependencies.event_emitter
         self.output_manager = dependencies.output_manager
@@ -59,102 +64,64 @@ class Council:
             self.steps = [DebateStep(agents)]
         else:
             self.steps = []
+        
+        # Initialize components
+        self._error_handler = ErrorHandler(
+            error_strategy=ErrorStrategy(error_strategy),
+            max_retries=max_retries,
+            event_emitter=self._event_emitter,
+        )
+        
+        self._step_orchestrator = StepOrchestrator(
+            steps=self.steps,
+            event_emitter=self._event_emitter,
+            output_manager=self.output_manager,
+            error_handler=self._error_handler,
+        )
+        
+        self._moderator_assigner = ModeratorAssigner()
+        
+        # Assign moderators to debate steps if needed
+        self._moderator_assigner.assign_moderators(self.steps)
 
     async def execute(self, task: str) -> dict[str, Any]:
-        """Execute the council workflow with the given task."""
-        self._event_emitter.emit("council:start", {"council": self.name, "task": task})
-
-        try:
-            for i, step in enumerate(self.steps):
-                self._event_emitter.emit(
-                    "step:start", {"step": i, "type": type(step).__name__}
-                )
-
-                try:
-                    result = await step.execute(task, self.context)
-                    self.context.add_result(f"step_{i}", result)
-                    self._event_emitter.emit(
-                        "step:complete", {"step": i, "result": result}
-                    )
-                except Exception as e:
-                    self._event_emitter.emit("step:error", {"step": i, "error": str(e)})
-
-                    if self.error_strategy == "halt":
-                        raise
-                    elif self.error_strategy == "continue":
-                        # Log error and continue to next step
-                        logger.warning(
-                            f"Step {i} failed with error: {e}, continuing..."
-                        )
-                        self.context.add_result(f"step_{i}", {"error": str(e)})
-                        continue
-                    elif self.error_strategy == "retry":
-                        # Simple retry once
-                        try:
-                            result = await step.execute(task, self.context)
-                            self.context.add_result(f"step_{i}", result)
-                            self._event_emitter.emit(
-                                "step:complete", {"step": i, "result": result}
-                            )
-                        except Exception as retry_error:
-                            if self.error_strategy == "halt":
-                                raise
-                            else:
-                                logger.warning(f"Step {i} retry failed: {retry_error}")
-                                self.context.add_result(
-                                    f"step_{i}", {"error": str(retry_error)}
-                                )
-                    elif self.error_strategy == "fallback":
-                        # Use a default/fallback result
-                        fallback_result = {
-                            "status": "fallback",
-                            "message": f"Step failed: {str(e)}",
-                        }
-                        self.context.add_result(f"step_{i}", fallback_result)
-                        self._event_emitter.emit(
-                            "step:fallback", {"step": i, "error": str(e)}
-                        )
-
-            final_result = self.context.get_summary()
-            self._event_emitter.emit("council:complete", {"result": final_result})
-
-            # Save output if enabled
-            if self.save_outputs and self.output_manager:
-                try:
-                    # Collect metadata
-                    metadata = {
-                        "error_strategy": self.error_strategy,
-                        "workflow": self.workflow,
-                        "num_steps": len(self.steps),
-                        "agents": self._get_agent_names(),
-                    }
-
-                    # Save both JSON and formatted versions
-                    output_path = self.output_manager.save_formatted_output(
-                        task=task,
-                        result=final_result,
-                        council_name=self.name,
-                        metadata=metadata,
-                    )
-
-                    logger.info(f"Council output saved to: {output_path}")
-                    self._event_emitter.emit("output:saved", {"path": str(output_path)})
-                except Exception as e:
-                    logger.error(f"Failed to save output: {e}")
-
-            return final_result
-
-        except Exception as e:
-            self._event_emitter.emit("council:error", {"error": str(e)})
-            raise
+        """Execute the council workflow with the given task.
+        
+        Args:
+            task: The task to execute
+            
+        Returns:
+            Summary of execution results
+        """
+        # Execute steps through orchestrator
+        results = await self._step_orchestrator.execute_steps(task, self.context)
+        
+        # Get final summary
+        final_result = self._prepare_final_result(task, results)
+        
+        # Save output if enabled
+        if self.save_outputs:
+            await self._save_output(task, final_result)
+        
+        return final_result
 
     def run(self, task: str) -> dict[str, Any]:
-        """Synchronous wrapper for execute."""
+        """Synchronous wrapper for execute.
+        
+        Args:
+            task: The task to execute
+            
+        Returns:
+            Summary of execution results
+        """
         return asyncio.run(self.execute(task))
 
     async def stream_execute(self, task: str):
         """Execute the council workflow with streaming events.
 
+        Args:
+            task: The task to execute
+            
         Yields:
             CouncilEvent: Events as they occur during execution
         """
@@ -170,9 +137,88 @@ class Council:
             step: The step to add
         """
         self.steps.append(step)
+        # Update orchestrator's steps
+        self._step_orchestrator.steps = self.steps
+        # Assign moderator if it's a debate step
+        self._moderator_assigner.assign_moderators([step])
+    
+    def set_moderator_pool(self, agents: List[IAgent]) -> None:
+        """Set the pool of agents that can act as moderators.
+        
+        Args:
+            agents: List of agents to use as moderators
+        """
+        self._moderator_assigner.set_moderator_pool(agents)
+        # Re-assign moderators with new pool
+        self._moderator_assigner.assign_moderators(self.steps)
+    
+    def set_fallback_handler(self, handler) -> None:
+        """Set a custom fallback handler for error handling.
+        
+        Args:
+            handler: Callable that handles fallback scenarios
+        """
+        self._error_handler.fallback_handler = handler
+    
+    def _prepare_final_result(self, task: str, results: List[IStepResult]) -> dict[str, Any]:
+        """Prepare the final result summary.
+        
+        Args:
+            task: The original task
+            results: List of step results
+            
+        Returns:
+            Summary dictionary
+        """
+        summary = self.context.get_summary()
+        summary.update({
+            "council": self.name,
+            "task": task,
+            "workflow": self.workflow,
+            "steps_completed": len(results),
+            "agents_involved": self._get_agent_names(),
+        })
+        return summary
+    
+    async def _save_output(self, task: str, result: dict[str, Any]) -> None:
+        """Save the council output.
+        
+        Args:
+            task: The original task
+            result: The final result to save
+        """
+        if not self.output_manager:
+            return
+            
+        try:
+            # Collect metadata
+            metadata = {
+                "error_strategy": self._error_handler.error_strategy.value,
+                "workflow": self.workflow,
+                "num_steps": len(self.steps),
+                "agents": self._get_agent_names(),
+            }
 
-    def _get_agent_names(self) -> list[str]:
-        """Get names of all agents in the council."""
+            # Save both JSON and formatted versions
+            output_path = self.output_manager.save_formatted_output(
+                task=task,
+                result=result,
+                council_name=self.name,
+                metadata=metadata,
+            )
+
+            logger.info(f"Council output saved to: {output_path}")
+            if self._event_emitter:
+                self._event_emitter.emit("output:saved", {"path": str(output_path)})
+        except Exception as e:
+            logger.error(f"Failed to save output: {e}")
+
+    def _get_agent_names(self) -> List[str]:
+        """Get names of all agents in the council.
+        
+        Returns:
+            List of unique agent names
+        """
         agent_names = []
         for step in self.steps:
             if hasattr(step, "agents"):
@@ -182,20 +228,3 @@ class Council:
                     else:
                         agent_names.append(str(agent))
         return list(set(agent_names))  # Remove duplicates
-
-    def handle_error(self, error: Exception, context: Any) -> None:
-        """Handle errors according to the configured strategy.
-
-        Args:
-            error: The exception that occurred
-            context: Current council context
-        """
-        logger.error(f"Council error: {error}")
-        self._event_emitter.emit(
-            "council:error",
-            {
-                "error": str(error),
-                "strategy": self.error_strategy,
-                "context_summary": context.get_summary(),
-            },
-        )
