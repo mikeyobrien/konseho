@@ -56,8 +56,8 @@ class ModelStepPlanner:
                 )
             elif step_type == "split":
                 step = SplitStep(
-                    agents=step_agents[0] if step_agents else agents[0],
-                    max_splits=min(len(participants), 4) if participants else 3
+                    agent_template=step_agents[0].agent if step_agents else agents[0].agent,
+                    max_agents=min(len(participants), 4) if participants else 3
                 )
             else:
                 # Default to debate

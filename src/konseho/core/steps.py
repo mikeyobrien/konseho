@@ -15,13 +15,41 @@ from ..agents.base import AgentWrapper
 logger = logging.getLogger(__name__)
 
 
+class StepResult:
+    """Result from a step execution."""
+    
+    def __init__(self, output: str, metadata: Optional[Dict[str, Any]] = None):
+        """Initialize step result.
+        
+        Args:
+            output: The main output from the step
+            metadata: Additional metadata about the execution
+        """
+        self.output = output
+        self.metadata = metadata or {}
+        self.success = True  # Default to successful
+
+
 class Step(ABC):
     """Base class for all execution steps."""
+    
+    @property
+    def name(self) -> str:
+        """Return the step name based on class name."""
+        return self.__class__.__name__
     
     @abstractmethod
     async def execute(self, task: str, context: Context) -> Dict[str, Any]:
         """Execute the step with given task and context."""
         pass
+    
+    def validate(self) -> List[str]:
+        """Validate step configuration.
+        
+        Returns:
+            List of validation error messages (empty if valid)
+        """
+        return []  # Base implementation has no validation errors
     
     def _build_prompt_with_time(self, task: str, context: Context = None) -> str:
         """Build a prompt that includes current time and context."""
@@ -64,6 +92,25 @@ class DebateStep(Step):
         self.moderator = moderator
         self.rounds = rounds
         self.voting_strategy = voting_strategy
+    
+    def validate(self) -> List[str]:
+        """Validate debate step configuration."""
+        errors = []
+        
+        if not self.agents:
+            errors.append("DebateStep requires at least one agent")
+        
+        if self.rounds < 1:
+            errors.append("DebateStep requires at least 1 round")
+        
+        valid_strategies = ["majority", "consensus", "moderator", "weighted"]
+        if self.voting_strategy not in valid_strategies:
+            errors.append(f"Invalid voting strategy: {self.voting_strategy}. Must be one of {valid_strategies}")
+        
+        if self.voting_strategy == "moderator" and not self.moderator:
+            errors.append("Moderator voting strategy requires a moderator agent")
+        
+        return errors
     
     async def _collect_votes(self, proposals: Dict[str, str]) -> Tuple[Dict[str, str], int]:
         """Collect votes from all agents."""

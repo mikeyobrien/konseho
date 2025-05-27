@@ -11,6 +11,7 @@ from .steps import Step, DebateStep
 from ..agents.base import AgentWrapper
 from ..execution.events import EventEmitter
 from .output_manager import OutputManager
+from ..protocols import IAgent, IStep, IContext, AgentLike, StepLike
 
 logger = logging.getLogger(__name__)
 

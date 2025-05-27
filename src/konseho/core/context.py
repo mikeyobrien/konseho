@@ -98,3 +98,26 @@ class Context:
             "action": "clear",
             "timestamp": datetime.now().isoformat()
         })
+    
+    def update(self, data: Dict[str, Any]) -> None:
+        """Update context with multiple key-value pairs."""
+        self._data.update(data)
+        self._history.append({
+            "action": "update",
+            "keys": list(data.keys()),
+            "timestamp": datetime.now().isoformat()
+        })
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Export context as dictionary."""
+        return self._data.copy()
+    
+    def get_size(self) -> int:
+        """Get context size in bytes."""
+        import sys
+        # Calculate approximate size of all data
+        total_size = sys.getsizeof(self._data)
+        total_size += sys.getsizeof(self._results)
+        total_size += sys.getsizeof(self._history)
+        total_size += sys.getsizeof(self._metadata)
+        return total_size
