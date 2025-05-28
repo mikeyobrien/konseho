@@ -1,10 +1,11 @@
 """Shell execution tool for agents."""
 
+import asyncio
 import logging
 import os
 import shlex
 import subprocess
-from typing import Any
+from typing import Any, Callable, Union, Awaitable
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +36,49 @@ def terminal_approval_callback(command: str, error_msg: str) -> bool:
         response = input(
             "\nDo you want to execute this command? (yes/no): "
         ).lower().strip()
+        if response in ["yes", "y"]:
+            return True
+        elif response in ["no", "n"]:
+            return False
+        else:
+            print("Please enter 'yes' or 'no'")
+
+
+async def async_terminal_approval_callback(command: str, error_msg: str) -> bool:
+    """Async terminal-based approval callback for dangerous commands.
+    
+    Args:
+        command: The command that failed validation
+        error_msg: The validation error message
+        
+    Returns:
+        True if user approves, False otherwise
+    """
+    # Use asyncio to run the blocking input in a thread
+    loop = asyncio.get_event_loop()
+    
+    def _print_warning():
+        print("\n" + "="*60)
+        print("⚠️  DANGEROUS COMMAND DETECTED")
+        print("="*60)
+        print(f"Command: {command}")
+        print(f"Risk: {error_msg}")
+        print("\nThis command could potentially:")
+        print("- Execute arbitrary code")
+        print("- Delete or modify files")
+        print("- Access sensitive data")
+        print("- Compromise system security")
+        print("="*60)
+    
+    # Print warning in main thread
+    _print_warning()
+    
+    # Get input in executor to avoid blocking
+    while True:
+        response = await loop.run_in_executor(
+            None,
+            lambda: input("\nDo you want to execute this command? (yes/no): ").lower().strip()
+        )
         if response in ["yes", "y"]:
             return True
         elif response in ["no", "n"]:
@@ -409,5 +453,110 @@ def execute_piped_commands(
         result["error"] = f"Pipeline timed out after {timeout} seconds"
     except Exception as e:
         result["error"] = f"Pipeline error: {str(e)}"
+    
+    return result
+
+
+async def async_shell_run(
+    command: str,
+    cwd: str | None = None,
+    timeout: int = 30,
+    capture_output: bool = True,
+    allow_unsafe: bool = False,
+    approval_callback: Union[
+        Callable[[str, str], bool], 
+        Callable[[str, str], Awaitable[bool]], 
+        None
+    ] = None
+) -> dict[str, Any]:
+    """Async version of shell_run that properly handles async approval callbacks.
+    
+    SECURITY NOTE: This function validates commands against an allowlist
+    to prevent command injection. Use allow_unsafe=True only when
+    executing trusted, internally-generated commands.
+    
+    Args:
+        command: The command to execute
+        cwd: Working directory for the command (default: current directory)
+        timeout: Maximum execution time in seconds (default: 30)
+        capture_output: Whether to capture stdout/stderr (default: True)
+        allow_unsafe: Skip command validation (DANGEROUS - use with caution)
+        approval_callback: Optional callback for user approval of dangerous commands.
+                         Can be sync or async. Should accept (command, validation_error) 
+                         and return bool.
+        
+    Returns:
+        Dictionary with:
+            - returncode: Exit code of the command
+            - stdout: Standard output (if captured)
+            - stderr: Standard error (if captured)
+            - error: Error message if command failed to execute
+            - approved: Whether a dangerous command was approved (if applicable)
+    """
+    # Validate command unless explicitly allowed
+    if not allow_unsafe:
+        is_valid, error_msg = validate_command(command)
+        if not is_valid:
+            # Check if user wants to approve the dangerous command
+            if approval_callback:
+                logger.info(f"Requesting approval for command: {command}")
+                logger.warning(f"Validation error: {error_msg}")
+                
+                # Handle both sync and async callbacks
+                if asyncio.iscoroutinefunction(approval_callback):
+                    approved = await approval_callback(command, error_msg)
+                else:
+                    # Run sync callback in executor to avoid blocking
+                    loop = asyncio.get_event_loop()
+                    approved = await loop.run_in_executor(
+                        None, approval_callback, command, error_msg
+                    )
+                
+                if approved:
+                    logger.warning(f"User approved dangerous command: {command}")
+                    # Recursively call with allow_unsafe=True to bypass validation
+                    result = await async_shell_run(
+                        command=command,
+                        cwd=cwd,
+                        timeout=timeout,
+                        capture_output=capture_output,
+                        allow_unsafe=True,
+                        approval_callback=None  # Don't ask again
+                    )
+                    result["approved"] = True
+                    return result
+                else:
+                    logger.warning(f"User rejected dangerous command: {command}")
+                    return {
+                        "error": f"Command rejected: {error_msg}", 
+                        "returncode": -1, 
+                        "stdout": "", 
+                        "stderr": "",
+                        "approved": False
+                    }
+            else:
+                logger.warning(f"Command validation failed: {error_msg}")
+                return {
+                    "error": error_msg, 
+                    "returncode": -1, 
+                    "stdout": "", 
+                    "stderr": ""
+                }
+    
+    # Run the actual command in an executor to avoid blocking
+    loop = asyncio.get_event_loop()
+    
+    # Use the sync shell_run for actual execution
+    result = await loop.run_in_executor(
+        None,
+        lambda: shell_run(
+            command=command,
+            cwd=cwd,
+            timeout=timeout,
+            capture_output=capture_output,
+            allow_unsafe=True,  # Already validated above
+            approval_callback=None  # Already handled above
+        )
+    )
     
     return result

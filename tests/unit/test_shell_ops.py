@@ -4,11 +4,13 @@ import pytest
 import sys
 import os
 import tempfile
-from unittest.mock import patch
+import asyncio
+from unittest.mock import patch, AsyncMock
 
 from konseho.tools.shell_ops import (
     shell_run, validate_command, execute_piped_commands, terminal_approval_callback,
-    add_allowed_commands, remove_allowed_commands, get_allowed_commands
+    add_allowed_commands, remove_allowed_commands, get_allowed_commands,
+    async_shell_run, async_terminal_approval_callback
 )
 
 
@@ -333,3 +335,110 @@ class TestShellOps:
         # Verify basic commands still work
         assert "echo" in current
         assert "git" in current
+
+
+class TestAsyncShellOps:
+    """Test async-compatible shell operations."""
+    
+    @pytest.mark.asyncio
+    async def test_async_shell_run_basic(self):
+        """Test basic async shell_run functionality."""
+        result = await async_shell_run("echo Hello Async")
+        
+        assert result["returncode"] == 0
+        assert "Hello Async" in result["stdout"]
+        assert result.get("error") is None
+    
+    @pytest.mark.asyncio
+    async def test_async_shell_run_with_sync_approval(self):
+        """Test async_shell_run with sync approval callback."""
+        # Mock sync approval callback that approves
+        def sync_approve(cmd, err):
+            return True
+        
+        # This should work - async_shell_run handles sync callbacks
+        result = await async_shell_run("curl http://example.com", approval_callback=sync_approve)
+        assert result.get("approved") is True
+        assert result["returncode"] == 0
+    
+    @pytest.mark.asyncio
+    async def test_async_shell_run_with_async_approval(self):
+        """Test async_shell_run with async approval callback."""
+        # Mock async approval callback that approves
+        async def async_approve(cmd, err):
+            await asyncio.sleep(0.01)  # Simulate async work
+            return True
+        
+        # This should work properly now
+        result = await async_shell_run("curl http://example.com", approval_callback=async_approve)
+        assert result.get("approved") is True
+        assert result["returncode"] == 0
+    
+    @pytest.mark.asyncio
+    async def test_async_shell_run_rejection(self):
+        """Test async_shell_run with rejection."""
+        # Mock async approval callback that rejects
+        async def async_reject(cmd, err):
+            await asyncio.sleep(0.01)  # Simulate async work
+            return False
+        
+        result = await async_shell_run("rm -rf /tmp/test", approval_callback=async_reject)
+        
+        assert result["returncode"] == -1
+        assert "Command rejected" in result["error"]
+        assert result.get("approved") is False
+    
+    @pytest.mark.asyncio 
+    async def test_async_terminal_approval_callback(self):
+        """Test async version of terminal approval callback."""
+        # Mock input to approve
+        with patch('builtins.input', return_value='yes'):
+            approved = await async_terminal_approval_callback(
+                "rm -rf /", 
+                "Command 'rm' is not in the allowed command list"
+            )
+            assert approved is True
+        
+        # Mock input to reject
+        with patch('builtins.input', return_value='no'):
+            approved = await async_terminal_approval_callback(
+                "rm -rf /",
+                "Command 'rm' is not in the allowed command list"
+            )
+            assert approved is False
+    
+    @pytest.mark.asyncio
+    async def test_non_blocking_execution(self):
+        """Test that async shell operations don't block event loop."""
+        # Track when each callback is called
+        call_times = []
+        
+        async def slow_approve(cmd, err):
+            call_times.append(asyncio.get_event_loop().time())
+            await asyncio.sleep(0.1)  # Simulate slow approval
+            return False  # Reject to avoid actual execution
+        
+        start = asyncio.get_event_loop().time()
+        
+        # Run multiple async operations concurrently
+        # Use commands that aren't in allowlist to trigger approval
+        tasks = [
+            async_shell_run("curl http://example1.com", approval_callback=slow_approve),
+            async_shell_run("curl http://example2.com", approval_callback=slow_approve),
+            async_shell_run("curl http://example3.com", approval_callback=slow_approve)
+        ]
+        
+        results = await asyncio.gather(*tasks)
+        elapsed = asyncio.get_event_loop().time() - start
+        
+        # All should be rejected
+        assert all(r["returncode"] == -1 for r in results)
+        assert all("Command rejected" in r["error"] for r in results)
+        
+        # Should run concurrently, not take 0.3+ seconds
+        assert elapsed < 0.2
+        
+        # Check that all callbacks started at nearly the same time
+        if len(call_times) >= 2:
+            time_diff = max(call_times) - min(call_times)
+            assert time_diff < 0.05  # Started within 50ms of each other
