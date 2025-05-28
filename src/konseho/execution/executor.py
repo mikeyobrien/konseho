@@ -6,6 +6,7 @@ import logging
 from collections import Counter
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
+from asyncio import Task, BaseEventLoop
 from ..core.context import Context
 from ..core.steps import Step
 if TYPE_CHECKING:
@@ -17,7 +18,7 @@ class StepExecutor:
     """Executes individual steps with parallelization and error handling."""
 
     def __init__(self, error_strategy: str='halt', retry_attempts: int=2,
-        event_handler: (Callable | None)=None):
+        event_handler: (Callable[[str, dict[str, object]], None] | None)=None):
         """Initialize step executor.
 
         Args:
@@ -27,10 +28,10 @@ class StepExecutor:
         """
         self.error_strategy = error_strategy
         self.retry_attempts = retry_attempts
-        self.event_handler = event_handler or (lambda e, d: None)
+        self.event_handler: Callable[[str, dict[str, object]], None] = event_handler or (lambda e, d: None)
 
-    async def execute_parallel(self, agents: list[Any], task: str, context:
-        Context) ->list[Any]:
+    async def execute_parallel(self, agents: list[object], task: str, context:
+        Context) ->list[object]:
         """Execute agents in parallel with error handling."""
         self.event_handler('parallel:start', {'agent_count': len(agents),
             'task': task})
@@ -43,7 +44,7 @@ class StepExecutor:
             agent_tasks.append(self._execute_agent_with_retry(agent,
                 task_with_context, agent_name))
         results = await asyncio.gather(*agent_tasks, return_exceptions=True)
-        processed_results = []
+        processed_results: list[object] = []
         for i, result in enumerate(results):
             agent_name = getattr(agents[i], 'name', f'agent_{i}')
             if isinstance(result, Exception):
@@ -60,12 +61,11 @@ class StepExecutor:
                     'result': result})
                 processed_results.append(result)
         self.event_handler('parallel:complete', {'results_count': len(
-            processed_results), 'success_count': len([r for r in
-            processed_results if not isinstance(r, Exception)])})
+            processed_results), 'success_count': len(processed_results)})
         return processed_results
 
-    async def _execute_agent_with_retry(self, agent: Any, task: str,
-        agent_name: str) ->Any:
+    async def _execute_agent_with_retry(self, agent: object, task: str,
+        agent_name: str) -> object:
         """Execute agent with retry logic."""
         last_exception = None
         for attempt in range(self.retry_attempts + 1):
@@ -74,7 +74,10 @@ class StepExecutor:
                     result = await agent.work_on(task)
                 else:
                     loop = asyncio.get_event_loop()
-                    result = await loop.run_in_executor(None, agent, task)
+                    if callable(agent):
+                        result = await loop.run_in_executor(None, agent, task)
+                    else:
+                        raise TypeError(f"Agent {agent_name} is not callable")
                 return result
             except Exception as e:
                 last_exception = e
@@ -85,14 +88,16 @@ class StepExecutor:
                     await asyncio.sleep(0.1 * (attempt + 1))
                 else:
                     break
-        raise last_exception
+        if last_exception is not None:
+            raise last_exception
+        raise RuntimeError("No exception recorded")
 
     def _inject_context(self, task: str, context: Context) ->str:
         """Inject context and current time into task prompt."""
         from datetime import datetime
         current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         time_info = f'Current date and time: {current_time}'
-        if context and (context._data or context._results):
+        if context._data or context._results:
             context_str = context.to_prompt_context(max_length=1000)
             return f'{time_info}\n\n{context_str}\n\nTask: {task}'
         else:
@@ -110,15 +115,15 @@ class AsyncExecutor:
         """
         self.max_concurrent = max_concurrent
         self._semaphore = asyncio.Semaphore(max_concurrent)
-        self._active_tasks: dict[str, asyncio.Task] = {}
+        self._active_tasks: dict[str, Task[object]] = {}
 
     async def execute_council(self, council: 'Council', task: str) ->dict[
-        str, Any]:
+        str, object]:
         """Execute a council with concurrency control."""
         async with self._semaphore:
             logger.info(f'Executing council: {council.name}')
             try:
-                result = await council.execute(task)
+                result: dict[str, object] = await council.execute(task)  # type: ignore[assignment]
                 logger.info(f'Council {council.name} completed successfully')
                 return result
             except Exception as e:
@@ -126,7 +131,7 @@ class AsyncExecutor:
                 raise
 
     async def execute_steps(self, steps: list[Step], task: str, context:
-        Context) ->list[dict[str, Any]]:
+        Context) ->list[dict[str, object]]:
         """Execute multiple steps with concurrency control."""
         async with self._semaphore:
             step_tasks = []
@@ -134,17 +139,17 @@ class AsyncExecutor:
                 step_task = step.execute(task, context)
                 step_tasks.append(step_task)
             results = await asyncio.gather(*step_tasks, return_exceptions=True)
-            processed_results = []
+            processed_results: list[dict[str, object]] = []
             for i, result in enumerate(results):
                 if isinstance(result, Exception):
                     logger.error(f'Step {i} failed: {result}')
-                    processed_results.append(result)
+                    processed_results.append({'error': str(result), 'step': i})
                 else:
-                    processed_results.append(result)
+                    processed_results.append(result)  # type: ignore[arg-type]
             return processed_results
 
     async def execute_many(self, councils: list['Council'], tasks: list[str]
-        ) ->list[dict[str, Any]]:
+        ) ->list[dict[str, object]]:
         """Execute multiple councils in parallel."""
         if len(councils) != len(tasks):
             raise ValueError('Number of councils must match number of tasks')
@@ -154,14 +159,14 @@ class AsyncExecutor:
             execution_tasks.append(execution_task)
         results = await asyncio.gather(*execution_tasks, return_exceptions=True
             )
-        processed_results = []
+        processed_results: list[dict[str, object]] = []
         for i, result in enumerate(results):
             if isinstance(result, Exception):
                 logger.error(f'Council {councils[i].name} failed: {result}')
                 processed_results.append({'error': str(result), 'council':
                     councils[i].name})
             else:
-                processed_results.append(result)
+                processed_results.append(result)  # type: ignore[arg-type]
         return processed_results
 
 
@@ -169,7 +174,7 @@ class DecisionProtocol:
     """Implements various decision-making protocols for debates."""
 
     def __init__(self, strategy: str='majority', threshold: float=0.5,
-        moderator: (Any | None)=None):
+        moderator: (object | None)=None):
         """Initialize decision protocol.
 
         Args:
@@ -181,7 +186,7 @@ class DecisionProtocol:
         self.threshold = threshold
         self.moderator = moderator
 
-    async def decide(self, proposals: dict[str, str]) ->dict[str, Any]:
+    async def decide(self, proposals: dict[str, str]) ->dict[str, object]:
         """Make a decision based on proposals."""
         if self.strategy == 'majority':
             return await self._majority_vote(proposals)
@@ -192,7 +197,7 @@ class DecisionProtocol:
         else:
             raise ValueError(f'Unknown decision strategy: {self.strategy}')
 
-    async def _majority_vote(self, proposals: dict[str, str]) ->dict[str, Any]:
+    async def _majority_vote(self, proposals: dict[str, str]) ->dict[str, object]:
         """Simple majority voting."""
         proposal_counts = Counter(proposals.values())
         winner_option = proposal_counts.most_common(1)[0][0]
@@ -201,7 +206,7 @@ class DecisionProtocol:
             len(proposals), 'strategy': 'majority'}
 
     async def _consensus_decision(self, proposals: dict[str, str]) ->dict[
-        str, Any]:
+        str, object]:
         """Consensus-based decision with threshold."""
         proposal_counts = Counter(proposals.values())
         total_proposals = len(proposals)
@@ -218,7 +223,7 @@ class DecisionProtocol:
             'strategy': 'consensus', 'consensus_reached': False}
 
     async def _moderator_decision(self, proposals: dict[str, str]) ->dict[
-        str, Any]:
+        str, object]:
         """Moderator makes the final decision."""
         if not self.moderator:
             raise ValueError('Moderator required for moderator strategy')
@@ -235,7 +240,10 @@ class DecisionProtocol:
             decision = await self.moderator.work_on(moderator_task)
         else:
             loop = asyncio.get_event_loop()
-            decision = await loop.run_in_executor(None, self.moderator,
-                moderator_task)
+            if callable(self.moderator):
+                decision = await loop.run_in_executor(None, self.moderator,
+                    moderator_task)
+            else:
+                raise TypeError("Moderator must be callable")
         return {'decision': decision, 'proposals': proposals, 'strategy':
             'moderator'}

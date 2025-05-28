@@ -5,9 +5,10 @@ import asyncio
 import logging
 import sys
 from collections.abc import Callable
-from typing import Any
-from .agents.base import AgentWrapper
+from typing import Any, cast
+from .agents.base import AgentWrapper, create_agent
 from .core.council import Council
+from .factories import CouncilFactory
 from .core.output_manager import OutputManager
 from .core.steps import DebateStep
 from .dynamic.builder import DynamicCouncilBuilder
@@ -79,9 +80,10 @@ def create_example_council() ->Council:
     coder = AgentWrapper(create_agent(name='Coder', system_prompt=
         CODER_PROMPT, temperature=0.6), name='Coder')
     factory = CouncilFactory()
-    return factory.create_council(name='ExampleCouncil', steps=[DebateStep(
-        agents=[explorer, planner, coder], rounds=1, voting_strategy=
-        'majority')])
+    from konseho.protocols import IStep
+    debate_step = DebateStep(agents=[explorer, planner, coder], rounds=1, voting_strategy='majority')
+    council = factory.create_council(name='ExampleCouncil', steps=[cast(IStep, debate_step)])
+    return cast(Council, council)
 
 
 async def run_interactive_chat(council: (Council | None)=None, dynamic_mode:
@@ -210,27 +212,30 @@ async def run_single_query(prompt: str, council: (Council | None)=None,
         print('📊 Final Result:')
         print('=' * 50)
         final_answer = None
-        if isinstance(result, dict) and 'results' in result:
+        if isinstance(result, dict) and 'results' in result:  # type: ignore[redundant-expr]
             step_results = result['results']
-            last_step_key = sorted([k for k in step_results.keys() if k.
-                startswith('step_')])[-1] if step_results else None
-            if last_step_key:
-                step_result = step_results[last_step_key]
-                if hasattr(step_result, 'output'):
-                    final_answer = step_result.output
-                elif isinstance(step_result, dict) and 'winner' in step_result:
-                    if final_answer := step_result['winner']:
-                        display_answer = final_answer[:1000] + '...' if len(final_answer
-                            ) > 1000 else final_answer
-                        print(f'\n{display_answer}')
-        else:
+            if isinstance(step_results, dict):
+                step_keys = [k for k in step_results.keys() if k.startswith('step_')]
+                last_step_key = sorted(step_keys)[-1] if step_keys else None
+                if last_step_key:
+                    step_result = step_results[last_step_key]
+                    if hasattr(step_result, 'output'):
+                        final_answer = getattr(step_result, 'output', None)
+                    elif isinstance(step_result, dict) and 'winner' in step_result:
+                        winner_value = step_result['winner']
+                        if isinstance(winner_value, str):
+                            final_answer = winner_value
+                            display_answer = final_answer[:1000] + '...' if len(final_answer) > 1000 else final_answer
+                            print(f'\n{display_answer}')
+        if final_answer is None:
             print('\n[No final answer produced]')
-        if isinstance(result, dict) and 'metadata' in result and result[
-            'metadata']:
-            print('\n📈 Summary:')
-            for key, value in result['metadata'].items():
-                if value:
-                    print(f'  • {key}: {value}')
+        if isinstance(result, dict) and 'metadata' in result:  # type: ignore[redundant-expr]
+            metadata = result['metadata']
+            if isinstance(metadata, dict):
+                print('\n📈 Summary:')
+                for key, value in metadata.items():
+                    if value:
+                        print(f'  • {key}: {value}')
     except Exception as e:
         print(f'\n❌ Error: {e}')
         sys.exit(1)

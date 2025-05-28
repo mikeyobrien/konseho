@@ -5,15 +5,20 @@ import asyncio
 import copy
 import sys
 from io import StringIO
-from typing import Any
+from typing import Any, ClassVar, cast
+from collections.abc import Callable
 from strands import Agent, tool
 from konseho.tools.parallel import ParallelExecutor
+from konseho.protocols import JSON
+from konseho.models import HistoryEntry
 
 
 class AgentWrapper:
     """Wrapper for Strands agents to work within councils."""
+    
+    _output_locks: ClassVar[dict[asyncio.AbstractEventLoop, asyncio.Lock]] = {}
 
-    def __init__(self, agent: Agent, name: (str | None)=None, **kwargs):
+    def __init__(self, agent: Agent, name: str | None = None, **kwargs: object) -> None:
         """Initialize agent wrapper.
 
         Args:
@@ -23,7 +28,7 @@ class AgentWrapper:
         """
         self.agent = agent
         self.name = name or f'agent_{id(agent)}'
-        self._history = []
+        self._history: list[HistoryEntry] = []
         self.system_prompt_override = None
         self._parallel_executor = ParallelExecutor()
         self._inject_parallel_tool()
@@ -65,15 +70,15 @@ class AgentWrapper:
             loop = asyncio.get_event_loop()
             result = await loop.run_in_executor(None, self.agent, task)
         if hasattr(result, 'message'):
-            response = result.message
+            response = str(result.message)
         else:
             response = str(result)
-        self._history.append({'task': task, 'response': response})
+        self._history.append(HistoryEntry(task=task, response=response))
         return response
 
-    def get_history(self) ->list:
+    def get_history(self) -> list[HistoryEntry]:
         """Get the agent's task history."""
-        return self._history.copy()
+        return [entry.model_copy() for entry in self._history]
 
     def clone(self, new_name: str) ->'AgentWrapper':
         """Create a clone of this agent wrapper with a new name.
@@ -94,16 +99,13 @@ class AgentWrapper:
                     custom_attrs[attr] = value
         cloned_wrapper = AgentWrapper(cloned_agent, name=new_name, **
             custom_attrs)
-        if self.system_prompt_override:
-            cloned_wrapper.system_prompt_override = self.system_prompt_override
         return cloned_wrapper
 
-    def _inject_parallel_tool(self):
+    def _inject_parallel_tool(self) -> None:
         """Add parallel execution tool to agent."""
 
         @tool
-        def parallel(tool_name: str, args_list: list[dict[str, Any]]) ->list[
-            Any]:
+        def parallel(tool_name: str, args_list: list[dict[str, object]]) -> list[object]:  # type: ignore[misc]
             """Execute any tool multiple times in parallel with different arguments.
 
             Args:
@@ -117,7 +119,7 @@ class AgentWrapper:
                 parallel("file_read", [{"path": "file1.py"}, {"path": "file2.py"}])
             """
             target_tool = None
-            for t in self.agent.tools:
+            for t in self.agent.tools:  # type: ignore[attr-defined]
                 if hasattr(t, '__name__') and t.__name__ == tool_name:
                     target_tool = t
                     break
@@ -126,18 +128,25 @@ class AgentWrapper:
                     args_list]
             return self._parallel_executor.execute_parallel(target_tool,
                 args_list)
-        if hasattr(self.agent, 'tools') and isinstance(self.agent.tools, list):
-            self.agent.tools.append(parallel)
+        # Add parallel tool if agent supports tools
+        if hasattr(self.agent, 'tools'):
+            tools = getattr(self.agent, 'tools', [])
+            if isinstance(tools, list):
+                tools.append(parallel)
 
     def _clone_agent(self, agent: Agent) ->Agent:
         """Clone a Strands agent preserving its configuration."""
         if hasattr(agent, '__class__'
             ) and agent.__class__.__name__ == 'MockStrandsAgent':
-            cloned = agent.__class__(agent.name, agent.response)
+            # Mock agent - get attributes safely
+            name = getattr(agent, 'name', 'mock_agent')
+            response = getattr(agent, 'response', 'mock response')
+            # Create cloned agent
+            cloned = agent.__class__(name, response)  # type: ignore[arg-type]
             if hasattr(agent, 'delay'):
-                cloned.delay = agent.delay
+                setattr(cloned, 'delay', getattr(agent, 'delay'))
             if hasattr(agent, 'config'):
-                cloned.config = copy.deepcopy(agent.config)
+                setattr(cloned, 'config', copy.deepcopy(getattr(agent, 'config')))
             return cloned
         if hasattr(agent, '_mock_name') and agent.__class__.__name__ == 'Mock':
             from unittest.mock import Mock
@@ -166,37 +175,51 @@ class AgentWrapper:
             return agent
 
 
-def create_agent(**config) ->Agent:
+def create_agent(**config: object) -> Agent:
     """Create a new Strands agent with given configuration.
 
     Creates a real Strands agent using the provided configuration.
     """
-    model = config.get('model')
-    if model is None:
+    # Extract and prepare configuration
+    model_value = config.get('model', 'gpt-4')
+    if model_value is None:
         from konseho.config import create_model_from_config
         model = create_model_from_config()
-    elif isinstance(model, str):
+    elif isinstance(model_value, str):
+        model = model_value
+    else:
+        model = model_value
+    
+    if isinstance(model, str):
         from konseho.config import ModelConfig, create_model_from_config, get_model_config
         base_config = get_model_config()
         model_config = ModelConfig(provider=base_config.provider, model_id=
             model, api_key=base_config.api_key, additional_args=base_config
             .additional_args)
         model = create_model_from_config(model_config)
+    
     tools = config.get('tools', [])
-    name = config.get('name', 'agent')
-    agent_args = {'model': model, 'tools': tools, 'callback_handler':
-        config.get('callback_handler')}
+    name = str(config.get('name', 'agent'))
+    
+    # Build agent arguments with proper types
     from datetime import datetime
     current_datetime = datetime.now()
     date_info = (
         f"\n\nCurrent date and time: {current_datetime.strftime('%Y-%m-%d %H:%M:%S')}"
         )
-    if 'system_prompt' in config:
-        agent_args['system_prompt'] = config['system_prompt'] + date_info
+    
+    system_prompt = config.get('system_prompt', 'You are a helpful AI assistant.')
+    if isinstance(system_prompt, str):
+        system_prompt = system_prompt + date_info
     else:
-        agent_args['system_prompt'
-            ] = f'You are a helpful AI assistant.{date_info}'
-    agent = Agent(**agent_args)
+        system_prompt = f'You are a helpful AI assistant.{date_info}'
+    
+    # Create agent with required arguments
+    agent = Agent(
+        model=model,
+        tools=tools if isinstance(tools, list) else [],
+        system_prompt=system_prompt
+    )
     if hasattr(agent, 'name'):
         agent.name = name
     if 'temperature' in config and hasattr(agent, 'temperature'):

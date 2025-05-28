@@ -8,6 +8,7 @@ from konseho import (
     Council, Context, AgentWrapper,
     ParallelStep, DebateStep, EventEmitter
 )
+from konseho.factories import CouncilFactory
 from konseho.execution.events import CouncilEvent
 from tests.fixtures import MockStrandsAgent, EventCollector
 
@@ -19,7 +20,8 @@ class TestEventSystem:
     async def test_council_lifecycle_events(self):
         """Test all council lifecycle events are emitted."""
         agent = AgentWrapper(MockStrandsAgent("agent"))
-        council = Council("test", [ParallelStep([agent])])
+        factory = CouncilFactory()
+        council = factory.create_council("test", [ParallelStep([agent])])
         
         collector = EventCollector()
         
@@ -55,7 +57,8 @@ class TestEventSystem:
             async def execute(self, task, context):
                 raise ValueError("Step failed")
         
-        council = Council(
+        factory = CouncilFactory()
+        council = factory.create_council(
             "test",
             [FailingStep()],
             error_strategy="continue"
@@ -78,7 +81,8 @@ class TestEventSystem:
     async def test_async_event_handlers(self):
         """Test async event handlers work correctly."""
         agent = AgentWrapper(MockStrandsAgent("agent"))
-        council = Council("test", [ParallelStep([agent])])
+        factory = CouncilFactory()
+        council = factory.create_council("test", [ParallelStep([agent])])
         
         async_events = []
         
@@ -102,7 +106,8 @@ class TestEventSystem:
     async def test_event_handler_errors(self):
         """Test council continues even if event handler fails."""
         agent = AgentWrapper(MockStrandsAgent("agent"))
-        council = Council("test", [ParallelStep([agent])])
+        factory = CouncilFactory()
+        council = factory.create_council("test", [ParallelStep([agent])])
         
         def failing_handler(event_type: str, data: Dict[str, Any]):
             raise RuntimeError("Handler failed")
@@ -130,7 +135,8 @@ class TestEventSystem:
         step1 = ParallelStep([agent1])
         step2 = DebateStep([agent1, agent2])
         
-        council = Council("test", [step1, step2])
+        factory = CouncilFactory()
+        council = factory.create_council("test", [step1, step2])
         
         collector = EventCollector()
         council._event_emitter.on("step:start", collector.collect)
@@ -215,7 +221,8 @@ class TestEventSystem:
     async def test_event_timing_and_order(self):
         """Test events are emitted at correct times."""
         agent = AgentWrapper(MockStrandsAgent("agent", delay=0.1))
-        council = Council("test", [ParallelStep([agent])])
+        factory = CouncilFactory()
+        council = factory.create_council("test", [ParallelStep([agent])])
         
         event_times = []
         
