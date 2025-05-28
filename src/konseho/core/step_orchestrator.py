@@ -1,27 +1,22 @@
 """Step orchestration component for the Council system."""
+from __future__ import annotations
 
 import logging
 from typing import TYPE_CHECKING
-
 from konseho.core.error_handler import ErrorHandler
 from konseho.protocols import IEventEmitter, IOutputManager, IStep, IStepResult
-
 if TYPE_CHECKING:
     from konseho.core.context import Context
-
 logger = logging.getLogger(__name__)
 
 
 class StepOrchestrator:
+    __slots__ = ()
     """Orchestrates the execution of steps in sequence."""
 
-    def __init__(
-        self,
-        steps: list[IStep],
-        event_emitter: IEventEmitter | None = None,
-        output_manager: IOutputManager | None = None,
-        error_handler: ErrorHandler | None = None,
-    ):
+    def __init__(self, steps: list[IStep], event_emitter: (IEventEmitter |
+        None)=None, output_manager: (IOutputManager | None)=None,
+        error_handler: (ErrorHandler | None)=None):
         """Initialize the StepOrchestrator.
 
         Args:
@@ -35,9 +30,8 @@ class StepOrchestrator:
         self.output_manager = output_manager
         self.error_handler = error_handler or ErrorHandler()
 
-    async def execute_steps(
-        self, task: str, context: "Context", council_name: str = "council"
-    ) -> list[IStepResult]:
+    async def execute_steps(self, task: str, context: 'Context',
+        council_name: str='council') ->list[IStepResult]:
         """Execute all steps in sequence.
 
         Args:
@@ -49,55 +43,28 @@ class StepOrchestrator:
             List of step results
         """
         results = []
-
         if self.event_emitter:
-            self.event_emitter.emit(
-                "council_started", {"task": task, "council": council_name}
-            )
-
+            self.event_emitter.emit('council_started', {'task': task,
+                'council': council_name})
         for i, step in enumerate(self.steps):
             if self.event_emitter:
-                self.event_emitter.emit(
-                    "step_started",
-                    {
-                        "step": i,
-                        "type": step.__class__.__name__,
-                        "index": i,
-                        "total": len(self.steps),
-                    },
-                )
-
-            # Execute step with error handling
-            result = await self.error_handler.execute_with_error_handling(
-                step, task, context, self._execute_single_step
-            )
-
+                self.event_emitter.emit('step_started', {'step': i, 'type':
+                    step.__class__.__name__, 'index': i, 'total': len(self.
+                    steps)})
+            result = await self.error_handler.execute_with_error_handling(step,
+                task, context, self._execute_single_step)
             results.append(result)
-
-            # Update context with result
             context.add_result(result)
-
             if self.event_emitter:
-                self.event_emitter.emit(
-                    "step_completed",
-                    {"step": i, "type": step.__class__.__name__, "result": result},
-                )
-
+                self.event_emitter.emit('step_completed', {'step': i,
+                    'type': step.__class__.__name__, 'result': result})
         if self.event_emitter:
-            self.event_emitter.emit(
-                "council_completed",
-                {
-                    "task": task,
-                    "council": council_name,
-                    "steps_completed": len(results),
-                },
-            )
-
+            self.event_emitter.emit('council_completed', {'task': task,
+                'council': council_name, 'steps_completed': len(results)})
         return results
 
-    async def _execute_single_step(
-        self, step: IStep, task: str, context: "Context"
-    ) -> IStepResult:
+    async def _execute_single_step(self, step: IStep, task: str, context:
+        'Context') ->IStepResult:
         """Execute a single step.
 
         Args:
@@ -108,14 +75,8 @@ class StepOrchestrator:
         Returns:
             The step result
         """
-        logger.info(f"Executing step: {step.name}")
-
-        # Validate step before execution
+        logger.info(f'Executing step: {step.name}')
         step.validate()
-
-        # Execute the step
         result = await step.execute(task, context)
-
-        logger.info(f"Step {step.name} completed")
-
+        logger.info(f'Step {step.name} completed')
         return result

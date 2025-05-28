@@ -1,15 +1,14 @@
 """Search tool properly decorated for Strands agents."""
+from __future__ import annotations
 
 from typing import Any
-
 from strands import tool
-
 from .search_config import get_search_provider
 from .search_ops import web_search as web_search_func
 
 
 @tool
-def web_search(query: str, max_results: int = 10) -> dict[str, Any]:
+def web_search(query: str, max_results: int=10) ->dict[str, Any]:
     """Search the web for information.
 
     Args:
@@ -22,6 +21,5 @@ def web_search(query: str, max_results: int = 10) -> dict[str, Any]:
     Example:
         web_search("latest AI news")
     """
-    # Use the configured search provider if available
     provider = get_search_provider()
     return web_search_func(query, max_results, provider=provider)

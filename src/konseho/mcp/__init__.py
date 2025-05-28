@@ -1,20 +1,20 @@
 """MCP (Model Context Protocol) integration for Konseho."""
+from __future__ import annotations
 
 import asyncio
 import logging
 from collections.abc import Callable
-from typing import Any, Dict, List, Optional
-
+from typing import Any
 from konseho.mcp.config import MCPConfigManager, MCPServerConfig
 from konseho.mcp.server import MCPServerManager, MCPToolSelector, ToolPreset
-
 logger = logging.getLogger(__name__)
 
 
 class MCP:
+    __slots__ = ()
     """High-level interface for MCP integration."""
 
-    def __init__(self, config_path: str | None = None):
+    def __init__(self, config_path: (str | None)=None):
         """Initialize MCP integration.
 
         Args:
@@ -34,7 +34,7 @@ class MCP:
                 self._loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(self._loop)
 
-    def start_server(self, name: str) -> bool:
+    def start_server(self, name: str) ->bool:
         """Start a specific MCP server.
 
         Args:
@@ -44,9 +44,10 @@ class MCP:
             True if successful
         """
         self._ensure_loop()
-        return self._loop.run_until_complete(self.server_manager.start_server(name))
+        return self._loop.run_until_complete(self.server_manager.
+            start_server(name))
 
-    def start_all(self) -> dict[str, bool]:
+    def start_all(self) ->dict[str, bool]:
         """Start all enabled MCP servers.
 
         Returns:
@@ -54,13 +55,10 @@ class MCP:
         """
         self._ensure_loop()
         self._loop.run_until_complete(self.server_manager.start_all_enabled())
+        return {name: bool(server.process) for name, server in self.
+            server_manager.servers.items()}
 
-        return {
-            name: bool(server.process)
-            for name, server in self.server_manager.servers.items()
-        }
-
-    def stop_server(self, name: str) -> bool:
+    def stop_server(self, name: str) ->bool:
         """Stop a specific MCP server.
 
         Args:
@@ -70,20 +68,17 @@ class MCP:
             True if successful
         """
         self._ensure_loop()
-        return self._loop.run_until_complete(self.server_manager.stop_server(name))
+        return self._loop.run_until_complete(self.server_manager.
+            stop_server(name))
 
     def stop_all(self):
         """Stop all running MCP servers."""
         self._ensure_loop()
         self._loop.run_until_complete(self.server_manager.stop_all())
 
-    def get_tools(
-        self,
-        tools: list[str] | None = None,
-        servers: list[str] | None = None,
-        exclude_tools: list[str] | None = None,
-        exclude_servers: list[str] | None = None,
-    ) -> list[Callable]:
+    def get_tools(self, tools: (list[str] | None)=None, servers: (list[str] |
+        None)=None, exclude_tools: (list[str] | None)=None, exclude_servers:
+        (list[str] | None)=None) ->list[Callable]:
         """Get tools with filtering.
 
         Args:
@@ -95,14 +90,11 @@ class MCP:
         Returns:
             List of tool functions ready for use in agents
         """
-        return self.tool_selector.select_tools(
-            tool_names=tools,
-            server_names=servers,
-            exclude_tools=exclude_tools,
-            exclude_servers=exclude_servers,
-        )
+        return self.tool_selector.select_tools(tool_names=tools,
+            server_names=servers, exclude_tools=exclude_tools,
+            exclude_servers=exclude_servers)
 
-    def create_preset(self, name: str, **kwargs) -> ToolPreset:
+    def create_preset(self, name: str, **kwargs) ->ToolPreset:
         """Create a reusable tool selection preset.
 
         Args:
@@ -127,33 +119,22 @@ class MCP:
         """
         return self.tool_selector.create_tool_preset(name, **kwargs)
 
-    def list_servers(self) -> list[dict[str, Any]]:
+    def list_servers(self) ->list[dict[str, Any]]:
         """List all configured servers with status.
 
         Returns:
             List of server information
         """
         servers = []
-
         for name, config in self.config_manager.servers.items():
             running = name in self.server_manager.servers
-            servers.append(
-                {
-                    "name": name,
-                    "enabled": config.enabled,
-                    "running": running,
-                    "command": config.command,
-                    "tools": (
-                        len(self.server_manager.get_tools_for_server(name))
-                        if running
-                        else 0
-                    ),
-                }
-            )
-
+            servers.append({'name': name, 'enabled': config.enabled,
+                'running': running, 'command': config.command, 'tools': len
+                (self.server_manager.get_tools_for_server(name)) if running
+                 else 0})
         return servers
 
-    def list_tools(self) -> list[dict[str, str]]:
+    def list_tools(self) ->list[dict[str, str]]:
         """List all available tools.
 
         Returns:
@@ -161,14 +142,8 @@ class MCP:
         """
         return self.server_manager.list_tools()
 
-    def add_server(
-        self,
-        name: str,
-        command: str,
-        args: list[str] = None,
-        env: dict[str, str] = None,
-        enabled: bool = True,
-    ):
+    def add_server(self, name: str, command: str, args: list[str]=None, env:
+        dict[str, str]=None, enabled: bool=True):
         """Add a new MCP server configuration.
 
         Args:
@@ -178,12 +153,10 @@ class MCP:
             env: Environment variables
             enabled: Whether server is enabled
         """
-        config = MCPServerConfig(
-            command=command, args=args or [], env=env or {}, enabled=enabled
-        )
-
+        config = MCPServerConfig(command=command, args=args or [], env=env or
+            {}, enabled=enabled)
         self.config_manager.add_server(name, config)
-        logger.info(f"Added MCP server configuration: {name}")
+        logger.info(f'Added MCP server configuration: {name}')
 
     def save_config(self):
         """Save current configuration to mcp.json."""
@@ -199,12 +172,8 @@ class MCP:
         self.stop_all()
 
 
-# Convenience functions
-def load_mcp_tools(
-    config_path: str | None = None,
-    servers: list[str] | None = None,
-    tools: list[str] | None = None,
-) -> list[Callable]:
+def load_mcp_tools(config_path: (str | None)=None, servers: (list[str] |
+    None)=None, tools: (list[str] | None)=None) ->list[Callable]:
     """Quick function to load MCP tools.
 
     Args:
@@ -223,13 +192,9 @@ def load_mcp_tools(
         tools = load_mcp_tools(tools=["read_file", "write_file"])
     """
     mcp = MCP(config_path)
-
-    # Start servers
     if servers:
         for server in servers:
             mcp.start_server(server)
     else:
         mcp.start_all()
-
-    # Get tools
     return mcp.get_tools(tools=tools, servers=servers)
