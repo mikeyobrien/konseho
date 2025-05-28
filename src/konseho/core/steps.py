@@ -11,13 +11,14 @@ from typing import Any
 from strands import Agent
 from ..agents.base import AgentWrapper
 from .context import Context
+from ..protocols import StepMetadata, IStepResult
 logger = logging.getLogger(__name__)
 
 
 class StepResult:
     """Result from a step execution."""
 
-    def __init__(self, output: str, metadata: (dict[str, Any] | None)=None):
+    def __init__(self, output: str, metadata: (StepMetadata | None)=None):
         """Initialize step result.
 
         Args:
@@ -25,7 +26,7 @@ class StepResult:
             metadata: Additional metadata about the execution
         """
         self.output = output
-        self.metadata = metadata or {}
+        self.metadata: StepMetadata = metadata or {}
         self.success = True
 
 
@@ -226,7 +227,7 @@ Vote for the best proposal. Reply with 'I vote for: [proposal name]' or 'I absta
                     )[-1][1]
         return latest
 
-    async def execute(self, task: str, context: Context) ->dict[str, Any]:
+    async def execute(self, task: str, context: Context) -> StepResult:
         """Execute the debate process."""
         proposals = {}
         all_proposals = []

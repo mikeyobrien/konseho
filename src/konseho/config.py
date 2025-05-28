@@ -95,7 +95,7 @@ def create_model_from_config(config: (ModelConfig | None)=None):
         raise RuntimeError(f'Failed to create model: {e}') from e
 
 
-def print_config_info():
+def print_config_info() -> None:
     """Print current configuration information."""
     config = get_model_config()
     print(f'Provider: {config.provider}')

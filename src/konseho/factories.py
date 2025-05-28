@@ -66,7 +66,7 @@ class CouncilFactory:
     def create_council(self, name: str='council', steps: (list[IStep] |
         None)=None, agents: (list[IAgent] | None)=None, error_strategy: str
         ='halt', workflow: str='sequential', save_outputs: bool=False,
-        output_dir: (str | Path | None)=None) ->Any:
+        output_dir: (str | Path | None)=None) -> 'Council':
         """Create a Council instance with injected dependencies.
 
         Args:

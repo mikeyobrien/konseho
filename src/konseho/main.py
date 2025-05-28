@@ -4,17 +4,22 @@ from __future__ import annotations
 import asyncio
 import logging
 import sys
+from collections.abc import Callable
+from typing import Any
 from .agents.base import AgentWrapper
 from .core.council import Council
 from .core.output_manager import OutputManager
 from .core.steps import DebateStep
 from .dynamic.builder import DynamicCouncilBuilder
 from .interface.chat import ChatInterface
+from .protocols import JSON
+from .setup_wizard import run_setup_wizard
+from .config import print_config_info
 logging.getLogger('httpx').setLevel(logging.WARNING)
 logging.getLogger('httpcore').setLevel(logging.WARNING)
 
 
-def print_usage():
+def print_usage() -> None:
     """Print usage information."""
     print(
         """
@@ -81,7 +86,7 @@ def create_example_council() ->Council:
 
 async def run_interactive_chat(council: (Council | None)=None, dynamic_mode:
     bool=False, analyzer_model: (str | None)=None, save_outputs: bool=False,
-    output_dir: (str | None)=None):
+    output_dir: (str | None)=None) -> None:
     """Run the interactive chat interface.
 
     Args:
@@ -111,7 +116,7 @@ async def run_interactive_chat(council: (Council | None)=None, dynamic_mode:
 
 
 async def run_dynamic_chat_session(chat: ChatInterface, analyzer_model: (
-    str | None)=None, save_outputs: bool=False, output_dir: (str | None)=None):
+    str | None)=None, save_outputs: bool=False, output_dir: (str | None)=None) -> None:
     """Run chat session with dynamic council creation for each query.
 
     Args:
@@ -163,7 +168,7 @@ async def run_dynamic_chat_session(chat: ChatInterface, analyzer_model: (
 
 async def run_single_query(prompt: str, council: (Council | None)=None,
     dynamic_mode: bool=False, quiet: bool=False, analyzer_model: (str |
-    None)=None, save_outputs: bool=False, output_dir: (str | None)=None):
+    None)=None, save_outputs: bool=False, output_dir: (str | None)=None) -> None:
     """Run a single query and exit.
 
     Args:
@@ -180,22 +185,27 @@ async def run_single_query(prompt: str, council: (Council | None)=None,
                 analyzer_model)
             council = await builder.build(prompt, save_outputs=save_outputs,
                 output_dir=output_dir)
-        if hasattr(council, '_event_emitter'):
+        if council and hasattr(council, '_event_emitter'):
 
-            def show_progress(event: str, data: dict):
-                if event == 'council:start':
-                    print(f"\n▶ Starting {data.get('council_name', 'Council')}"
-                        )
-                elif event == 'step:start':
-                    step_type = data.get('step_type', 'Step')
-                    print(f'→ Executing {step_type}...')
-                elif event == 'council:error':
-                    print(f"❌ Error: {data.get('error', 'Unknown error')}")
+            def show_progress(event: str, data: JSON) -> None:
+                if isinstance(data, dict):
+                    if event == 'council:start':
+                        print(f"\n▶ Starting {data.get('council_name', 'Council')}"
+                            )
+                    elif event == 'step:start':
+                        step_type = data.get('step_type', 'Step')
+                        print(f'→ Executing {step_type}...')
+                    elif event == 'council:error':
+                        print(f"❌ Error: {data.get('error', 'Unknown error')}")
             council._event_emitter.on('council:start', show_progress)
             council._event_emitter.on('step:start', show_progress)
             council._event_emitter.on('council:error', show_progress)
         print(f'\n📋 Task: {prompt}')
-        result = await council.execute(prompt)
+        if council:
+            result = await council.execute(prompt)
+        else:
+            print("❌ No council available")
+            return
         print('\n' + '=' * 50)
         print('📊 Final Result:')
         print('=' * 50)
@@ -226,7 +236,7 @@ async def run_single_query(prompt: str, council: (Council | None)=None,
         sys.exit(1)
 
 
-def main():
+def main() -> None:
     """Main CLI entry point."""
     args = sys.argv[1:]
     if '--help' in args or '-h' in args:
@@ -332,10 +342,15 @@ def main():
                 save_outputs, output_dir=output_dir))
     elif council_type == 'example':
         council = create_example_council()
-        if save_outputs:
-            council.save_outputs = True
-            council.output_manager = OutputManager(output_dir or
-                'council_outputs')
+        if save_outputs and hasattr(council, 'dependencies'):
+            # Update council with output manager through factory
+            from .factories import CouncilFactory, CouncilDependencies
+            factory = CouncilFactory(
+                CouncilDependencies.with_output_manager(
+                    output_dir=output_dir or 'council_outputs'
+                )
+            )
+            council = create_example_council()  # Re-create with proper deps
         if prompt:
             print('🏛️  Konseho - Example Council')
             print('=' * 50)
@@ -347,7 +362,11 @@ def main():
         try:
             from .example_councils import COUNCILS
             if council_type in COUNCILS:
-                council = COUNCILS[council_type]()
+                council_factory = COUNCILS.get(council_type)
+                if council_factory is None:
+                    print(f'⚠️  Council type "{council_type}" is not properly configured.')
+                    sys.exit(1)
+                council = council_factory()
                 if prompt:
                     print(f'🏛️  Konseho - {council_type.capitalize()} Council')
                     print('=' * 50)
@@ -362,7 +381,11 @@ def main():
                     'Available councils: example, balanced, innovation, development, research, dynamic'
                     )
                 print('Falling back to balanced council...')
-                council = COUNCILS['balanced']()
+                council_factory = COUNCILS.get('balanced')
+                if council_factory is None:
+                    print('⚠️  No fallback council available.')
+                    sys.exit(1)
+                council = council_factory()
                 if prompt:
                     asyncio.run(run_single_query(prompt, council, quiet=
                         quiet_mode))

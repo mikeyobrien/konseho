@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 
-def run_setup_wizard():
+def run_setup_wizard() -> None:
     """Run interactive setup wizard for first-time users."""
     print('\n🏛️  Welcome to Konseho Setup Wizard')
     print('=' * 50)
