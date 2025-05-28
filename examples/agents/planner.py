@@ -1,6 +1,6 @@
 """Planner agent for creating implementation plans and strategies."""
 
-from typing import List, Optional
+
 from strands import Agent
 
 
@@ -12,7 +12,7 @@ class PlannerAgent(Agent):
         name: str = "Planner",
         model: str = "gpt-4",
         temperature: float = 0.5,
-        tools: Optional[List[str]] = None
+        tools: list[str] | None = None
     ):
         """Initialize the Planner agent.
         
@@ -53,7 +53,7 @@ When creating plans:
 
 Always structure plans clearly with priorities and dependencies marked."""
     
-    def create_plan(self, task: str, context: Optional[str] = None) -> str:
+    def create_plan(self, task: str, context: str | None = None) -> str:
         """Create an implementation plan for a task.
         
         Args:
@@ -106,7 +106,7 @@ For each risk, provide:
 """
         return self(risk_prompt)
     
-    def prioritize_tasks(self, tasks: List[str]) -> str:
+    def prioritize_tasks(self, tasks: list[str]) -> str:
         """Prioritize a list of tasks.
         
         Args:

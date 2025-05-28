@@ -1,13 +1,11 @@
 """Model-based query analyzer using LLM for sophisticated analysis."""
 
-import json
 import asyncio
-from typing import Dict, Any, List, Optional
-from enum import Enum
+import json
+from typing import Any
 
 from ..agents.base import create_agent
 from .analyzer import TaskType
-
 
 ANALYZER_PROMPT = """You are a query analyzer for a multi-agent council system. Your job is to analyze user queries and determine the optimal configuration for a council of AI agents to solve the task.
 
@@ -93,38 +91,39 @@ Now analyze the following query and return ONLY the JSON response, no additional
 
 class ModelBasedAnalyzer:
     """Uses an LLM to analyze queries and suggest council configurations."""
-    
-    def __init__(self, model: Optional[str] = None, temperature: float = 0.3):
+
+    def __init__(self, model: str | None = None, temperature: float = 0.3):
         """Initialize the analyzer.
-        
+
         Args:
             model: Model to use for analysis (defaults to config if not specified)
             temperature: Temperature for analysis (lower = more consistent)
         """
-        self.model = model
+        # Default to Claude Sonnet 4 for query analysis
+        self.model = model or "claude-sonnet-4-20250514"
         self.temperature = temperature
-        
+
         # Get persona registry and inject into prompt
         from .persona_registry import PERSONA_REGISTRY
+
         self.registry = PERSONA_REGISTRY
         prompt_with_registry = ANALYZER_PROMPT.replace(
-            "{persona_registry}", 
-            self.registry.get_registry_summary()
+            "{persona_registry}", self.registry.get_registry_summary()
         )
-        
+
         self._analyzer_agent = create_agent(
             name="QueryAnalyzer",
             system_prompt=prompt_with_registry,
             temperature=temperature,
-            model=model  # Pass the model parameter to create_agent
+            model=self.model,  # Use self.model which defaults to Sonnet 4
         )
-    
-    async def analyze(self, query: str) -> Dict[str, Any]:
+
+    async def analyze(self, query: str) -> dict[str, Any]:
         """Analyze a query using the LLM.
-        
+
         Args:
             query: The user's query to analyze
-            
+
         Returns:
             Analysis results with task type, agents, and workflow
         """
@@ -133,18 +132,18 @@ class ModelBasedAnalyzer:
             # Call the agent directly in executor since Strands agents are synchronous
             loop = asyncio.get_event_loop()
             agent_result = await loop.run_in_executor(None, self._analyzer_agent, query)
-            
+
             # Extract the message from the result
             json_str = None
             analysis = None
-            
+
             # Convert result to string to get the actual content
             result_str = str(agent_result)
-            
+
             # The result string should contain the JSON
             if result_str:
                 json_str = result_str.strip()
-            
+
             # Parse JSON response if we have a string response
             if json_str is not None and analysis is None:
                 # The response might have markdown formatting, so extract JSON
@@ -154,42 +153,43 @@ class ModelBasedAnalyzer:
                     json_str = json_str[3:]
                 if json_str.endswith("```"):
                     json_str = json_str[:-3]
-                
+
                 analysis = json.loads(json_str.strip())
-            
+
             # Ensure we have analysis
             if analysis is None:
                 raise ValueError("Failed to extract analysis from model response")
-            
+
             # Debug: check what we have
-            #print(f"DEBUG: Analysis type before processing: {type(analysis)}")
-            #print(f"DEBUG: Analysis keys before processing: {list(analysis.keys()) if isinstance(analysis, dict) else 'Not a dict'}")
-                
+            # print(f"DEBUG: Analysis type before processing: {type(analysis)}")
+            # print(f"DEBUG: Analysis keys before processing: {list(analysis.keys()) if isinstance(analysis, dict) else 'Not a dict'}")
+
             # Convert task_type string to enum
             task_type_str = analysis.get("task_type", "general")
             analysis["task_type"] = self._parse_task_type(task_type_str)
-            
+
             # Add backward compatibility fields
-            analysis["suggested_agent_count"] = len(analysis.get("suggested_agents", []))
+            analysis["suggested_agent_count"] = len(
+                analysis.get("suggested_agents", [])
+            )
             analysis["needs_parallel"] = any(
-                step["type"] == "parallel" 
+                step["type"] == "parallel"
                 for step in analysis.get("workflow_steps", [])
             )
             analysis["needs_debate"] = any(
-                step["type"] == "debate" 
-                for step in analysis.get("workflow_steps", [])
+                step["type"] == "debate" for step in analysis.get("workflow_steps", [])
             )
             analysis["query"] = query
-            
+
             return analysis
-            
+
         except Exception as e:
             # Exit with error if model analysis fails
             print(f"\n❌ Model analysis failed: {e}")
             print("\nModel-based analysis is required but failed.")
             print("Please check your model configuration and try again.")
             raise RuntimeError(f"Model analysis failed: {e}") from e
-    
+
     def _parse_task_type(self, task_type_str: str) -> TaskType:
         """Convert task type string to enum."""
         mapping = {
@@ -200,26 +200,28 @@ class ModelBasedAnalyzer:
             "planning": TaskType.PLANNING,
             "debate": TaskType.DEBATE,
             "implementation": TaskType.IMPLEMENTATION,
-            "general": TaskType.GENERAL
+            "general": TaskType.GENERAL,
         }
         return mapping.get(task_type_str.lower(), TaskType.GENERAL)
 
 
 class ModelAnalyzer:
     """Model-based query analyzer (no fallback)."""
-    
-    def __init__(self, model: Optional[str] = None, temperature: float = 0.3):
+
+    def __init__(self, model: str | None = None, temperature: float = 0.3):
         """Initialize the analyzer.
-        
+
         Args:
-            model: Model to use for analysis (defaults to config if not specified)
+            model: Model to use for analysis (defaults to Claude Sonnet 4)
             temperature: Temperature for analysis (lower = more consistent)
         """
+        # Default to Claude Sonnet 4 for query analysis
+        model = model or "claude-sonnet-4-20250514"
         self.model_analyzer = ModelBasedAnalyzer(model=model, temperature=temperature)
-    
-    async def analyze(self, query: str) -> Dict[str, Any]:
+
+    async def analyze(self, query: str) -> dict[str, Any]:
         """Analyze query using model-based analysis.
-        
+
         Model-based analysis is required. There is no fallback.
         """
         return await self.model_analyzer.analyze(query)

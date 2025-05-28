@@ -2,9 +2,11 @@
 """Example: Research Council with split work distribution."""
 
 import asyncio
-from konseho import Council, SplitStep, DebateStep, Context
-from konseho.agents.base import AgentWrapper
+
 from examples.agents import ExplorerAgent, PlannerAgent
+from konseho import DebateStep, SplitStep
+from konseho.factories import CouncilFactory
+from konseho.agents.base import AgentWrapper
 
 
 async def main():
@@ -15,7 +17,9 @@ async def main():
     planner = AgentWrapper(PlannerAgent(), name="LeadPlanner")
     
     # Create a council with dynamic work splitting
-    council = Council(
+    factory = CouncilFactory()
+
+    council = factory.create_council(
         name="ResearchCouncil",
         steps=[
             # Step 1: Split research task across multiple agents
@@ -24,11 +28,12 @@ async def main():
                 min_agents=3,
                 max_agents=5,
                 split_strategy="auto"
-            ),
+
+    ),
             
             # Step 2: Synthesize findings with debate
             DebateStep(
-                agents=[
+        agents=[
                     AgentWrapper(PlannerAgent(name="Synthesizer1"), name="Synthesizer1"),
                     AgentWrapper(PlannerAgent(name="Synthesizer2"), name="Synthesizer2"),
                 ],
@@ -73,7 +78,7 @@ async def main():
     debate_results = result['results'].get('step_1', {})
     if 'winner' in debate_results:
         print(f"Voting strategy: {debate_results.get('strategy', 'unknown')}")
-        print(f"Final synthesis:")
+        print("Final synthesis:")
         print(debate_results['winner'][:300] + "..." if len(debate_results['winner']) > 300 else debate_results['winner'])
     
     print("\n✅ Research Council Complete!")

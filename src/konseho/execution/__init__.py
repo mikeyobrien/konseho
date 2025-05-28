@@ -1,13 +1,13 @@
 """Execution engine and event handling."""
 
-from .executor import StepExecutor, AsyncExecutor, DecisionProtocol
-from .events import EventType, CouncilEvent, EventEmitter
+from .events import CouncilEvent, EventEmitter, EventType
+from .executor import AsyncExecutor, DecisionProtocol, StepExecutor
 
 __all__ = [
     "StepExecutor",
-    "AsyncExecutor", 
+    "AsyncExecutor",
     "DecisionProtocol",
     "EventType",
     "CouncilEvent",
-    "EventEmitter"
+    "EventEmitter",
 ]

@@ -2,10 +2,12 @@
 """Example: Human-in-the-Loop Council for collaborative decision making."""
 
 import asyncio
-from konseho import Council, DebateStep, ParallelStep, Context
+
+from examples.agents import CoderAgent, PlannerAgent, ReviewerAgent
+from konseho import DebateStep, ParallelStep
+from konseho.factories import CouncilFactory
 from konseho.agents.base import AgentWrapper
 from konseho.agents.human import HumanAgent
-from examples.agents import PlannerAgent, CoderAgent, ReviewerAgent
 
 
 async def main():
@@ -19,7 +21,9 @@ async def main():
     reviewer = AgentWrapper(ReviewerAgent(), name="QAEngineer")
     
     # Create a collaborative council
-    council = Council(
+    factory = CouncilFactory()
+
+    council = factory.create_council(
         name="ProductDevelopmentCouncil",
         steps=[
             # Step 1: Human defines requirements, AI plans
@@ -27,7 +31,7 @@ async def main():
             
             # Step 2: Debate on approach with human input
             DebateStep(
-                agents=[human, planner, reviewer],
+        agents=[human, planner, reviewer],
                 rounds=2,
                 voting_strategy="moderator",
                 moderator=human  # Human has final say
@@ -38,7 +42,7 @@ async def main():
             
             # Step 4: Review with human approval
             DebateStep(
-                agents=[reviewer, human],
+        agents=[reviewer, human],
                 rounds=1,
                 voting_strategy="consensus"
             )

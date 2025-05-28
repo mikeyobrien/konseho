@@ -2,9 +2,11 @@
 """Interactive chat interface demo for Konseho councils."""
 
 import asyncio
-from konseho import Council, DebateStep, ParallelStep, ChatInterface
+
+from examples.agents import CoderAgent, ExplorerAgent, PlannerAgent, ReviewerAgent
+from konseho import ChatInterface, DebateStep, ParallelStep
+from konseho.factories import CouncilFactory
 from konseho.agents.base import AgentWrapper
-from examples.agents import ExplorerAgent, PlannerAgent, CoderAgent, ReviewerAgent
 
 
 async def main():
@@ -17,7 +19,9 @@ async def main():
     reviewer = AgentWrapper(ReviewerAgent(), name="Reviewer")
     
     # Create a multi-capability council
-    council = Council(
+    factory = CouncilFactory()
+
+    council = factory.create_council(
         name="InteractiveCouncil",
         steps=[
             # First explore and plan in parallel

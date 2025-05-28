@@ -309,12 +309,8 @@ def shell_run(
                 }
     
     # Prepare result
-    result = {
-        "returncode": -1,
-        "stdout": "",
-        "stderr": ""
-    }
-    
+    result = {"returncode": -1, "stdout": "", "stderr": ""}
+
     try:
         # Always use subprocess with array arguments for safety
         # Parse the command into parts
@@ -344,7 +340,7 @@ def shell_run(
         if capture_output:
             result["stdout"] = completed.stdout if completed.stdout else ""
             result["stderr"] = completed.stderr if completed.stderr else ""
-        
+
     except subprocess.TimeoutExpired:
         result["error"] = f"Command timed out after {timeout} seconds"
     except FileNotFoundError:

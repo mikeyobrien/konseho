@@ -302,6 +302,74 @@ class ICouncil(Protocol):
         ...
 
 
+@runtime_checkable
+class IEventEmitter(Protocol):
+    """Interface for event emission system."""
+
+    def on(self, event: str, handler: Any) -> None:
+        """Register an event handler.
+
+        Args:
+            event: Event name
+            handler: Callback function
+        """
+        ...
+
+    def emit(self, event: str, data: Any = None) -> None:
+        """Emit an event with optional data.
+
+        Args:
+            event: Event name
+            data: Optional event data
+        """
+        ...
+
+    async def emit_async(self, event: str, data: Any = None) -> None:
+        """Emit an event asynchronously.
+
+        Args:
+            event: Event name
+            data: Optional event data
+        """
+        ...
+
+
+@runtime_checkable
+class IOutputManager(Protocol):
+    """Interface for output management."""
+
+    def save_formatted_output(
+        self,
+        task: str,
+        result: Any,
+        council_name: str = "council",
+        metadata: dict[str, Any] | None = None,
+    ) -> Any:
+        """Save council output in formatted form.
+
+        Args:
+            task: The task that was executed
+            result: The execution result
+            council_name: Name of the council
+            metadata: Additional metadata to save
+
+        Returns:
+            Path to saved output
+        """
+        ...
+
+    def clean_old_outputs(self, max_age_days: int = 7) -> int:
+        """Clean up old output files.
+
+        Args:
+            max_age_days: Maximum age of files to keep
+
+        Returns:
+            Number of files cleaned
+        """
+        ...
+
+
 # Type aliases for migration support
 AgentLike = IAgent | Any  # Any allows existing Agent class
 StepLike = IStep | Any  # Any allows existing Step class
