@@ -8,6 +8,41 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
+
+def terminal_approval_callback(command: str, error_msg: str) -> bool:
+    """Default terminal-based approval callback for dangerous commands.
+    
+    Args:
+        command: The command that failed validation
+        error_msg: The validation error message
+        
+    Returns:
+        True if user approves, False otherwise
+    """
+    print("\n" + "="*60)
+    print("⚠️  DANGEROUS COMMAND DETECTED")
+    print("="*60)
+    print(f"Command: {command}")
+    print(f"Risk: {error_msg}")
+    print("\nThis command could potentially:")
+    print("- Execute arbitrary code")
+    print("- Delete or modify files")
+    print("- Access sensitive data")
+    print("- Compromise system security")
+    print("="*60)
+    
+    while True:
+        response = input(
+            "\nDo you want to execute this command? (yes/no): "
+        ).lower().strip()
+        if response in ["yes", "y"]:
+            return True
+        elif response in ["no", "n"]:
+            return False
+        else:
+            print("Please enter 'yes' or 'no'")
+
+
 # Whitelist of allowed commands for basic operations
 # This can be extended based on requirements
 ALLOWED_COMMANDS = {
@@ -24,6 +59,44 @@ ALLOWED_COMMANDS = {
     # System info (safe read-only commands)
     "whoami", "hostname", "date", "which", "where"
 }
+
+
+def add_allowed_commands(*commands: str) -> None:
+    """Add commands to the allowed commands whitelist.
+    
+    Args:
+        *commands: Command names to add to the whitelist
+        
+    Example:
+        add_allowed_commands("docker", "kubectl", "terraform")
+    """
+    ALLOWED_COMMANDS.update(commands)
+    logger.info(f"Added {len(commands)} commands to whitelist: {', '.join(commands)}")
+
+
+def remove_allowed_commands(*commands: str) -> None:
+    """Remove commands from the allowed commands whitelist.
+    
+    Args:
+        *commands: Command names to remove from the whitelist
+        
+    Example:
+        remove_allowed_commands("rm", "dd")  # Remove dangerous commands
+    """
+    for cmd in commands:
+        ALLOWED_COMMANDS.discard(cmd)
+    logger.info(
+        f"Removed {len(commands)} commands from whitelist: {', '.join(commands)}"
+    )
+
+
+def get_allowed_commands() -> set[str]:
+    """Get the current set of allowed commands.
+    
+    Returns:
+        Set of allowed command names
+    """
+    return ALLOWED_COMMANDS.copy()
 
 
 def validate_command(command: str) -> tuple[bool, str]:
@@ -124,7 +197,8 @@ def shell_run(
     cwd: str | None = None,
     timeout: int = 30,
     capture_output: bool = True,
-    allow_unsafe: bool = False
+    allow_unsafe: bool = False,
+    approval_callback: Any = None
 ) -> dict[str, Any]:
     """Execute shell commands with timeout and output capture.
     
@@ -138,6 +212,8 @@ def shell_run(
         timeout: Maximum execution time in seconds (default: 30)
         capture_output: Whether to capture stdout/stderr (default: True)
         allow_unsafe: Skip command validation (DANGEROUS - use with caution)
+        approval_callback: Optional callback for user approval of dangerous commands.
+                         Should accept (command, validation_error) and return bool.
         
     Returns:
         Dictionary with:
@@ -145,13 +221,48 @@ def shell_run(
             - stdout: Standard output (if captured)
             - stderr: Standard error (if captured)
             - error: Error message if command failed to execute
+            - approved: Whether a dangerous command was approved (if applicable)
     """
     # Validate command unless explicitly allowed
     if not allow_unsafe:
         is_valid, error_msg = validate_command(command)
         if not is_valid:
-            logger.warning(f"Command validation failed: {error_msg}")
-            return {"error": error_msg, "returncode": -1, "stdout": "", "stderr": ""}
+            # Check if user wants to approve the dangerous command
+            if approval_callback:
+                logger.info(f"Requesting approval for command: {command}")
+                logger.warning(f"Validation error: {error_msg}")
+                
+                approved = approval_callback(command, error_msg)
+                if approved:
+                    logger.warning(f"User approved dangerous command: {command}")
+                    # Recursively call with allow_unsafe=True to bypass validation
+                    result = shell_run(
+                        command=command,
+                        cwd=cwd,
+                        timeout=timeout,
+                        capture_output=capture_output,
+                        allow_unsafe=True,
+                        approval_callback=None  # Don't ask again
+                    )
+                    result["approved"] = True
+                    return result
+                else:
+                    logger.warning(f"User rejected dangerous command: {command}")
+                    return {
+                        "error": f"Command rejected: {error_msg}", 
+                        "returncode": -1, 
+                        "stdout": "", 
+                        "stderr": "",
+                        "approved": False
+                    }
+            else:
+                logger.warning(f"Command validation failed: {error_msg}")
+                return {
+                    "error": error_msg, 
+                    "returncode": -1, 
+                    "stdout": "", 
+                    "stderr": ""
+                }
     
     # Prepare result
     result = {
