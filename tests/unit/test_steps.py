@@ -5,6 +5,7 @@ import asyncio
 from unittest.mock import Mock, patch, AsyncMock
 
 from konseho import Context, DebateStep, ParallelStep, SplitStep, AgentWrapper
+from konseho.core.steps import StepResult
 from konseho.core.steps import Step
 from tests.fixtures import MockStrandsAgent, MockAgent
 
@@ -23,12 +24,13 @@ class TestParallelStep:
         
         result = await step.execute("Test task", context)
         
-        assert "parallel_results" in result
-        assert len(result["parallel_results"]) == 2
-        assert "agent1" in result["parallel_results"]
-        assert "agent2" in result["parallel_results"]
-        assert "Response 1" in result["parallel_results"]["agent1"]
-        assert "Response 2" in result["parallel_results"]["agent2"]
+        assert isinstance(result, StepResult)
+        assert "parallel_results" in result.metadata
+        assert len(result.metadata["parallel_results"]) == 2
+        assert "agent1" in result.metadata["parallel_results"]
+        assert "agent2" in result.metadata["parallel_results"]
+        assert "Response 1" in result.metadata["parallel_results"]["agent1"]
+        assert "Response 2" in result.metadata["parallel_results"]["agent2"]
     
     @pytest.mark.asyncio
     async def test_parallel_execution_with_context(self):
@@ -96,10 +98,11 @@ class TestDebateStep:
         
         result = await step.execute("Debate topic", context)
         
-        assert "proposals" in result
-        assert "winner" in result
-        assert "strategy" in result
-        assert result["strategy"] == "majority"
+        assert isinstance(result, StepResult)
+        assert "proposals" in result.metadata
+        assert "winner" in result.metadata
+        assert "strategy" in result.metadata
+        assert result.metadata["strategy"] == "majority"
     
     @pytest.mark.asyncio
     async def test_debate_multiple_rounds(self):
@@ -113,7 +116,8 @@ class TestDebateStep:
         result = await step.execute("Topic", context)
         
         # Should have initial proposals + round proposals
-        proposals = result["proposals"]
+        assert isinstance(result, StepResult)
+        proposals = result.metadata["proposals"]
         assert "agent1" in proposals
         assert "agent2" in proposals
         assert "agent1_round_0" in proposals
@@ -137,8 +141,9 @@ class TestDebateStep:
         
         result = await step.execute("Topic", context)
         
-        assert result["strategy"] == "moderator"
-        assert "agent1 wins" in result["winner"]
+        assert isinstance(result, StepResult)
+        assert result.metadata["strategy"] == "moderator"
+        assert "agent1 wins" in result.metadata["winner"]
     
     @pytest.mark.asyncio
     async def test_debate_context_in_prompts(self):
@@ -194,12 +199,14 @@ class TestSplitStep:
         
         # Short task
         result = await step.execute("Short task", context)
-        assert result["num_agents"] == 2  # Minimum
+        assert isinstance(result, StepResult)
+        assert result.metadata["num_agents"] == 2  # Minimum
         
         # Longer task
         long_task = " ".join(["word"] * 100)  # 100 words
         result = await step.execute(long_task, context)
-        assert result["num_agents"] == 3  # Based on heuristic
+        assert isinstance(result, StepResult)
+        assert result.metadata["num_agents"] == 3  # Based on heuristic
     
     @pytest.mark.asyncio
     async def test_split_max_agents_limit(self):
@@ -218,7 +225,8 @@ class TestSplitStep:
         very_long_task = " ".join(["word"] * 500)
         result = await step.execute(very_long_task, context)
         
-        assert result["num_agents"] == 3  # Should cap at max_agents
+        assert isinstance(result, StepResult)
+        assert result.metadata["num_agents"] == 3  # Should cap at max_agents
     
     @pytest.mark.asyncio
     async def test_split_task_distribution(self):
@@ -235,10 +243,11 @@ class TestSplitStep:
         result = await step.execute("Main task", context)
         
         # Each result should indicate its part
-        assert all("Part" in str(r) for r in result["split_results"])
-        assert "Part 1/3" in str(result["split_results"][0])
-        assert "Part 2/3" in str(result["split_results"][1])
-        assert "Part 3/3" in str(result["split_results"][2])
+        assert isinstance(result, StepResult)
+        assert all("Part" in str(r) for r in result.metadata["split_results"])
+        assert "Part 1/3" in str(result.metadata["split_results"][0])
+        assert "Part 2/3" in str(result.metadata["split_results"][1])
+        assert "Part 3/3" in str(result.metadata["split_results"][2])
 
 
 class TestStepInterface:
@@ -256,11 +265,15 @@ class TestStepInterface:
         class CustomStep(Step):
             async def execute(self, task: str, context: Context):
                 context.add("custom", "data")
-                return {"status": "custom_complete"}
+                return StepResult(
+                    output="Custom step complete",
+                    metadata={"status": "custom_complete"}
+                )
         
         step = CustomStep()
         context = Context()
         result = await step.execute("Task", context)
         
-        assert result["status"] == "custom_complete"
+        assert isinstance(result, StepResult)
+        assert result.metadata["status"] == "custom_complete"
         assert context.get("custom") == "data"

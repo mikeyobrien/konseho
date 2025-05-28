@@ -1,16 +1,48 @@
 """Plans optimal step sequences based on task requirements."""
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, TypedDict, TypeAlias, TYPE_CHECKING
+from ..protocols import JSON
+from collections.abc import Callable
 from ..core.steps import DebateStep, ParallelStep, SplitStep, Step
 from ..dynamic.analyzer import TaskType
+from ..agents.base import AgentWrapper
+from ..protocols import StepMetadata
+
+
+class StepConfig(TypedDict, total=False):
+    """Configuration for a step."""
+    description: str
+    task_template: str
+    rounds: int
+    moderator_index: int | None
+    max_splits: int
+
+
+class StepTemplate(TypedDict):
+    """Template for creating a step."""
+    type: type[Step]
+    config: StepConfig
+
+
+StepPlan: TypeAlias = list[StepTemplate]
+
+
+class TaskAnalysis(TypedDict):
+    """Analysis result from task analyzer."""
+    task_type: TaskType
+    complexity: str
+    needs_parallel: bool
+    needs_debate: bool
+    query: str
+    domains: list[str]
 
 
 class StepPlanner:
     """Plans and creates step sequences for councils."""
 
-    def __init__(self):
-        self.step_templates = {TaskType.RESEARCH: [{'type': ParallelStep,
+    def __init__(self) -> None:
+        self.step_templates: dict[TaskType, StepPlan] = {TaskType.RESEARCH: [{'type': ParallelStep,
             'config': {'description':
             'Initial research across different aspects', 'task_template':
             'Research {domain} aspects of: {query}'}}, {'type': DebateStep,
@@ -50,7 +82,7 @@ class StepPlanner:
             'type': DebateStep, 'config': {'description':
             'Integration and review', 'rounds': 1}}]}
 
-    def plan_steps(self, analysis: dict[str, Any], agents_count: int) ->list[
+    def plan_steps(self, analysis: TaskAnalysis, agents: list[AgentWrapper]) -> list[
         Step]:
         """Plan optimal steps based on analysis."""
         task_type = analysis['task_type']
@@ -60,11 +92,11 @@ class StepPlanner:
         template = self.step_templates.get(task_type, self.
             _get_default_template())
         adjusted_template = self._adjust_template(template, complexity,
-            needs_parallel, needs_debate, agents_count)
-        steps = self._create_steps(adjusted_template, analysis)
+            needs_parallel, needs_debate, len(agents))
+        steps = self._create_steps(adjusted_template, analysis, agents)
         return steps
 
-    def _get_default_template(self) ->list[dict[str, Any]]:
+    def _get_default_template(self) -> StepPlan:
         """Get default template for general tasks."""
         return [{'type': DebateStep, 'config': {'description':
             'Initial discussion and approach', 'rounds': 1}}, {'type':
@@ -74,11 +106,11 @@ class StepPlanner:
             DebateStep, 'config': {'description': 'Final synthesis',
             'rounds': 1}}]
 
-    def _adjust_template(self, template: list[dict[str, Any]], complexity:
+    def _adjust_template(self, template: StepPlan, complexity:
         str, needs_parallel: bool, needs_debate: bool, agents_count: int
-        ) ->list[dict[str, Any]]:
+        ) -> StepPlan:
         """Adjust template based on specific requirements."""
-        adjusted = []
+        adjusted: StepPlan = []
         for step_config in template:
             config = step_config.copy()
             if config['type'] == DebateStep and 'rounds' in config['config']:
@@ -101,10 +133,9 @@ class StepPlanner:
                 'Collaborative problem solving', 'rounds': 2}}]
         return adjusted
 
-    def _create_steps(self, template: list[dict[str, Any]], analysis: dict[
-        str, Any]) ->list[Step]:
+    def _create_steps(self, template: StepPlan, analysis: TaskAnalysis, agents: list[AgentWrapper]) -> list[Step]:
         """Create step instances from template."""
-        steps = []
+        steps: list[Step] = []
         query = analysis['query']
         domains = analysis['domains']
         for i, step_config in enumerate(template):
@@ -118,15 +149,30 @@ class StepPlanner:
                 if '{aspect}' in config['task_template']:
                     pass
             if step_type == DebateStep:
-                step = DebateStep(rounds=config.get('rounds', 2),
-                    moderator_index=config.get('moderator_index', None))
+                moderator_idx = config.get('moderator_index')
+                moderator = agents[moderator_idx] if moderator_idx is not None and 0 <= moderator_idx < len(agents) else None
+                step: Step = DebateStep(
+                    agents=agents,
+                    moderator=moderator,
+                    rounds=config.get('rounds', 2)
+                )
             elif step_type == ParallelStep:
-                step = ParallelStep()
-                step._task_template = config.get('task_template', query)
+                step = ParallelStep(agents=agents)
+                # Store task template in metadata if needed
+                if 'task_template' in config:
+                    step.metadata = {'task_template': config['task_template']}
             elif step_type == SplitStep:
-                step = SplitStep(max_splits=config.get('max_splits', 3))
+                # SplitStep needs different handling - it dynamically creates splits
+                # For now, create a ParallelStep as a placeholder
+                step = ParallelStep(agents=agents)
+                step.metadata = {'max_splits': config.get('max_splits', 3)}
             else:
-                step = DebateStep()
-            step._description = config.get('description', f'Step {i + 1}')
+                # Default to DebateStep
+                step = DebateStep(agents=agents)
+            
+            # Store description in metadata
+            if not hasattr(step, 'metadata'):
+                step.metadata = {}
+            step.metadata['description'] = config.get('description', f'Step {i + 1}')
             steps.append(step)
         return steps

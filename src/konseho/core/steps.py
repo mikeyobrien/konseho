@@ -31,6 +31,10 @@ class StepResult:
 
 class Step(ABC):
     """Base class for all execution steps."""
+    
+    def __init__(self) -> None:
+        """Initialize step with metadata storage."""
+        self.metadata: dict[str, object] = {}
 
     @property
     def name(self) ->str:
@@ -75,6 +79,7 @@ class DebateStep(Step):
             rounds: Number of debate rounds
             voting_strategy: How to determine winner (majority, consensus, moderator)
         """
+        super().__init__()
         self.agents = agents
         self.moderator = moderator
         self.rounds = rounds
@@ -355,6 +360,7 @@ class ParallelStep(Step):
             task_splitter: Optional function to split task into subtasks
             result_combiner: Optional agent to synthesize parallel results
         """
+        super().__init__()
         self.agents = agents
         self.task_splitter = task_splitter
         self.result_combiner = result_combiner
@@ -416,6 +422,7 @@ class SplitStep(Step):
             max_agents: Maximum number of agents
             split_strategy: How to determine split (auto, fixed, adaptive)
         """
+        super().__init__()
         self.agent_template = agent_template
         self.min_agents = min_agents
         self.max_agents = max_agents
