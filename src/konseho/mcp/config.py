@@ -6,6 +6,7 @@ import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+from konseho.protocols import JSON
 logger = logging.getLogger(__name__)
 
 
@@ -18,14 +19,40 @@ class MCPServerConfig:
     enabled: bool = True
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) ->'MCPServerConfig':
+    def from_dict(cls, data: dict[str, JSON]) ->'MCPServerConfig':
         """Create from dictionary configuration."""
-        return cls(command=data.get('command', ''), args=data.get('args', [
-            ]), env=data.get('env', {}), enabled=data.get('enabled', True))
+        command = data.get('command', '')
+        args = data.get('args', [])
+        env = data.get('env', {})
+        enabled = data.get('enabled', True)
+        
+        # Type narrowing
+        if not isinstance(command, str):
+            command = ''
+        # Process args
+        str_args: list[str] = []
+        if isinstance(args, list):
+            for arg in args:
+                if isinstance(arg, str):
+                    str_args.append(arg)
+        
+        # Process env
+        str_env: dict[str, str] = {}
+        if isinstance(env, dict):
+            for k, v in env.items():
+                if isinstance(v, str):
+                    str_env[k] = v
+        if not isinstance(enabled, bool):
+            enabled = True
+            
+        return cls(command=command, args=str_args, env=str_env, enabled=enabled)
 
-    def to_dict(self) ->dict[str, Any]:
+    def to_dict(self) ->dict[str, JSON]:
         """Convert to dictionary for serialization."""
-        return {'command': self.command, 'args': self.args, 'env': self.env,
+        from typing import cast
+        args: JSON = cast(JSON, self.args)
+        env: JSON = cast(JSON, self.env)
+        return {'command': self.command, 'args': args, 'env': env,
             'enabled': self.enabled}
 
 
@@ -65,7 +92,7 @@ class MCPConfigManager:
         logger.info(f'No MCP config found, using default: {default_path}')
         return default_path
 
-    def _load_config(self):
+    def _load_config(self) -> None:
         """Load configuration from mcp.json file."""
         if not self.config_path.exists():
             logger.debug(f'No config file at {self.config_path}')
@@ -89,7 +116,7 @@ class MCPConfigManager:
             json.dump(data, f, indent=2)
         logger.info(f'Saved MCP config to {self.config_path}')
 
-    def add_server(self, name: str, config: MCPServerConfig):
+    def add_server(self, name: str, config: MCPServerConfig) -> None:
         """Add or update an MCP server configuration."""
         self.servers[name] = config
         logger.info(f'Added MCP server: {name}')

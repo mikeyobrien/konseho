@@ -6,17 +6,15 @@ import os
 from collections.abc import Callable
 from typing import Any, TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from mcp import MCPClient as MCPClientType
-else:
-    MCPClientType = object
 try:
     from mcp import StdioServerParameters, stdio_client
-    from strands.tools.mcp import MCPClient  # type: ignore[import-not-found]
+    from strands.tools.mcp import MCPClient
     MCP_AVAILABLE = True
 except ImportError:
     MCP_AVAILABLE = False
     MCPClient = None  # type: ignore[assignment,misc]
+    StdioServerParameters = object  # type: ignore[assignment,misc]
+    stdio_client = None  # type: ignore[assignment]
 from konseho.mcp.config import MCPConfigManager
 logger = logging.getLogger(__name__)
 
@@ -125,16 +123,16 @@ class StrandsMCPManager:
                         ) or 'brave' in tool.__name__.lower():
                         logger.info(
                             f'Found search tool by name: {tool.__name__}')
-                        return tool  # type: ignore[return-value]
+                        return tool
                 if callable(tool):
                     doc = getattr(tool, '__doc__', '')
                     if doc and 'search' in doc.lower():
                         logger.info('Found search tool by docstring')
-                        return tool  # type: ignore[return-value]
+                        return tool
                 if server_name == 'brave-search' and tools.index(tool) == 0:
                     logger.info(
                         'Using first tool from brave-search as search tool')
-                    return tool  # type: ignore[return-value]
+                    return tool
             return None
         search_servers = ['brave-search', 'tavily', 'serper', 'web-search']
         if not self.config_manager:
@@ -148,7 +146,7 @@ class StrandsMCPManager:
                         ) and 'search' in tool.__name__.lower():
                         logger.info(
                             f'Found search tool in {server}: {tool.__name__}')
-                        return tool  # type: ignore[return-value]
+                        return tool
         return None
 
     def disconnect_all(self) -> None:

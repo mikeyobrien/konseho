@@ -6,7 +6,8 @@ import logging
 import os
 import shlex
 import subprocess
-from typing import Any, Callable, Awaitable
+from typing import Any, Callable, Awaitable, Union
+from konseho.protocols import JSON
 logger = logging.getLogger(__name__)
 
 
@@ -55,7 +56,7 @@ async def async_terminal_approval_callback(command: str, error_msg: str
     """
     loop = asyncio.get_event_loop()
 
-    def _print_warning():
+    def _print_warning() -> None:
         print('\n' + '=' * 60)
         print('⚠️  DANGEROUS COMMAND DETECTED')
         print('=' * 60)
@@ -189,7 +190,7 @@ def validate_command(command: str) ->tuple[bool, str]:
 
 def shell_run(command: str, cwd: (str | None)=None, timeout: int=30,
     capture_output: bool=True, allow_unsafe: bool=False, approval_callback:
-    Any=None) ->dict[str, Any]:
+    Callable[[str, str], bool] | None=None) ->dict[str, object]:
     """Execute shell commands with timeout and output capture.
     
     SECURITY NOTE: This function validates commands against an allowlist
@@ -264,7 +265,7 @@ def shell_run(command: str, cwd: (str | None)=None, timeout: int=30,
 
 
 def execute_piped_commands(commands: list[str], cwd: (str | None)=None,
-    timeout: int=30) ->dict[str, Any]:
+    timeout: int=30) ->dict[str, object]:
     """Execute a pipeline of commands safely.
     
     This function allows executing piped commands without using shell=True
@@ -320,7 +321,7 @@ def execute_piped_commands(commands: list[str], cwd: (str | None)=None,
 async def async_shell_run(command: str, cwd: (str | None)=None, timeout:
     int=30, capture_output: bool=True, allow_unsafe: bool=False,
     approval_callback: Union[Callable[[str, str], bool], Callable[[str, str
-    ], Awaitable[bool]], None]=None) ->dict[str, Any]:
+    ], Awaitable[bool]], None]=None) ->dict[str, object]:
     """Async version of shell_run that properly handles async approval callbacks.
     
     SECURITY NOTE: This function validates commands against an allowlist

@@ -5,6 +5,7 @@ import json
 import re
 from collections.abc import Callable
 from typing import Any
+from konseho.protocols import JSON
 from .search_ops import SearchProvider
 
 
@@ -15,7 +16,7 @@ class MCPSearchProvider(SearchProvider):
     and adapts their responses to the standard search result format.
     """
 
-    def __init__(self, mcp_tool: Callable, provider_name: (str | None)=None):
+    def __init__(self, mcp_tool: Callable[..., Any], provider_name: (str | None)=None):
         """Initialize MCP search provider.
 
         Args:
@@ -31,7 +32,7 @@ class MCPSearchProvider(SearchProvider):
         """Return the provider name."""
         return self._provider_name
 
-    def _extract_provider_name(self, tool: Callable) ->str:
+    def _extract_provider_name(self, tool: Callable[..., Any]) ->str:
         """Extract provider name from tool function."""
         if hasattr(tool, 'tool_name'):
             tool_name = tool.tool_name.lower()
@@ -50,7 +51,7 @@ class MCPSearchProvider(SearchProvider):
         else:
             parts = tool_name.split('__')
             if len(parts) >= 2:
-                return parts[1]
+                return str(parts[1])
             return 'mcp'
 
     def search(self, query: str, max_results: int=10) ->list[dict[str, str]]:
@@ -80,7 +81,7 @@ class MCPSearchProvider(SearchProvider):
             print(f'MCP search error: {e}')
             return []
 
-    def _parse_response(self, response: Any, max_results: int) ->list[dict[
+    def _parse_response(self, response: object, max_results: int) ->list[dict[
         str, str]]:
         """Parse MCP tool response into standard search results format."""
         results = []
@@ -159,7 +160,7 @@ class MCPSearchProvider(SearchProvider):
         return results[:max_results]
 
 
-def create_mcp_search_provider(tool_pattern: str, tools: list[Any]) ->(
+def create_mcp_search_provider(tool_pattern: str, tools: list[object]) ->(
     MCPSearchProvider | None):
     """Create an MCP search provider from available tools.
 
@@ -182,17 +183,19 @@ def create_mcp_search_provider(tool_pattern: str, tools: list[Any]) ->(
         if pattern_lower in tool_name:
             search_indicators = ['search', 'find', 'query', 'lookup']
             if any(indicator in tool_name for indicator in search_indicators):
-                return MCPSearchProvider(tool)
+                if callable(tool):
+                    return MCPSearchProvider(tool)
     for tool in tools:
         tool_name = getattr(tool, '__name__', '').lower()
         tool_doc = (getattr(tool, '__doc__', '') or '').lower()
         if ('search' in tool_name or 'search' in tool_doc
             ) and pattern_lower in tool_name:
-            return MCPSearchProvider(tool)
+            if callable(tool):
+                return MCPSearchProvider(tool)
     return None
 
 
-def find_mcp_search_provider(tools: list[Any]) ->(MCPSearchProvider | None):
+def find_mcp_search_provider(tools: list[object]) ->(MCPSearchProvider | None):
     """Find any available MCP search provider from tools.
 
     Args:

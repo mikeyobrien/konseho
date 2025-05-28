@@ -7,7 +7,7 @@ import re
 from abc import ABC, abstractmethod
 from collections import Counter
 from collections.abc import Callable
-from typing import Any
+from typing import Any  # TODO: Remove Any usage
 from konseho.protocols import JSON
 from strands import Agent
 from ..agents.base import AgentWrapper
@@ -269,9 +269,11 @@ Provide your updated proposal or critique others."""
             'strategy': self.voting_strategy}
         if 'votes' in winner_data:
             metadata['votes'] = winner_data['votes']
+            votes_data = winner_data.get('votes')
+            if isinstance(votes_data, dict):
+                metadata['total_votes'] = sum(int(v) if isinstance(v, (int, float)) else 0 for v in votes_data.values())
         if 'abstentions' in winner_data:
             metadata['abstentions'] = winner_data['abstentions']
-            metadata['total_votes'] = sum(winner_data['votes'].values())
         if 'tie' in winner_data:
             metadata['tie'] = winner_data['tie']
             metadata['tie_resolution'] = winner_data.get('tie_resolution',
@@ -283,18 +285,28 @@ Provide your updated proposal or critique others."""
         if self.voting_strategy == 'consensus':
             metadata['consensus_reached'] = consensus_reached
             metadata['rounds_to_consensus'] = rounds_to_consensus
-        return StepResult(output=winner_data['winner'], metadata=metadata)
+        # Extract winner as string
+        winner_output = winner_data.get('winner', '')
+        if not isinstance(winner_output, str):
+            winner_output = str(winner_output)
+        
+        # Convert metadata to StepMetadata type
+        from typing import cast
+        from konseho.protocols import StepMetadata
+        step_metadata = cast(StepMetadata, metadata)
+        
+        return StepResult(output=winner_output, metadata=step_metadata)
 
     async def _get_proposal(self, agent: AgentWrapper, prompt: str) ->str:
         """Get a proposal from an agent."""
         result = await agent.work_on(prompt)
         # Handle various response formats
-        if hasattr(result, '__getitem__'):
+        if isinstance(result, dict):
             try:
-                if 'message' in result:  # type: ignore[operator]
-                    return str(result['message'])  # type: ignore[index]
-                elif 'content' in result:  # type: ignore[operator]
-                    return str(result['content'])  # type: ignore[index]
+                if 'message' in result:
+                    return str(result['message'])
+                elif 'content' in result:
+                    return str(result['content'])
             except (TypeError, KeyError):
                 pass
         return str(result)
@@ -353,7 +365,7 @@ Proposals:
 class ParallelStep(Step):
     """Agents work on different aspects simultaneously."""
 
-    def __init__(self, agents: list[AgentWrapper], task_splitter: (Callable[..., Any] |
+    def __init__(self, agents: list[AgentWrapper], task_splitter: (Callable[[str, int], list[str]] |
         None)=None, result_combiner: (AgentWrapper | None)=None):
         """Initialize parallel step.
 
@@ -551,11 +563,16 @@ class SplitStep(Step):
             for component in components:
                 tech_stack = project_structure[component]
                 if isinstance(tech_stack, list):
-                    tech_str = ' and '.join(tech_stack)
+                    tech_items = [str(item) for item in tech_stack]
+                    tech_str = ' and '.join(tech_items)
                     subtasks.append(f'Handle {component} ({tech_str}): {task}')
                 else:
                     subtasks.append(f'Handle {component}: {task}')
             return subtasks
+        return self._split_task(task, num_agents)
+    
+    def _default_split(self, task: str, num_agents: int) -> list[str]:
+        """Default task splitting for backwards compatibility."""
         return self._split_task(task, num_agents)
 
     def _create_agent_clones(self, num_agents: int) ->list[AgentWrapper]:

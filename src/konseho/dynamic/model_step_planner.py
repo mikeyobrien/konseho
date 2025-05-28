@@ -1,7 +1,8 @@
 """Step planner that uses model-generated workflow specifications."""
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Callable
+from konseho.protocols import JSON
 from ..agents.base import AgentWrapper
 from ..core.steps import DebateStep, ParallelStep, SplitStep, Step
 
@@ -9,7 +10,7 @@ from ..core.steps import DebateStep, ParallelStep, SplitStep, Step
 class ModelStepPlanner:
     """Creates workflow steps from model-generated specifications."""
 
-    def create_steps_from_spec(self, workflow_specs: list[dict[str, Any]],
+    def create_steps_from_spec(self, workflow_specs: list[dict[str, JSON]],
         agents: list[AgentWrapper]) ->list[Step]:
         """Create steps from model-generated workflow specification.
 
@@ -21,29 +22,43 @@ class ModelStepPlanner:
             List of configured steps
         """
         agent_map = {agent.name: agent for agent in agents}
-        steps = []
+        steps: list[Step] = []
         for spec in workflow_specs:
-            step_type = spec['type']
+            step_type = spec.get('type', 'debate')
             description = spec.get('description', '')
             participants = spec.get('participants', [])
-            step_agents = [agent_map[name] for name in participants if name in
+            
+            # Type narrowing for values from JSON
+            if not isinstance(step_type, str):
+                step_type = 'debate'
+            if not isinstance(description, str):
+                description = ''
+            if not isinstance(participants, list):
+                participants = []
+            
+            participant_names = [p for p in participants if isinstance(p, str)]
+            step_agents = [agent_map[name] for name in participant_names if name in
                 agent_map]
             if not step_agents:
                 step_agents = agents
+            
+            # Create appropriate step type
+            step: Step
             if step_type == 'debate':
                 step = DebateStep(agents=step_agents, rounds=self.
                     _determine_rounds(description), voting_strategy=self.
                     _determine_voting_strategy(len(step_agents)))
             elif step_type == 'parallel':
                 step = ParallelStep(agents=step_agents, task_splitter=self.
-                    _create_task_splitter(description, participants))
+                    _create_task_splitter(description, participant_names))
             elif step_type == 'split':
                 step = SplitStep(agent_template=step_agents[0].agent if
                     step_agents else agents[0].agent, max_agents=min(len(
-                    participants), 4) if participants else 3)
+                    participant_names), 4) if participant_names else 3)
             else:
                 step = DebateStep(agents=step_agents)
-            step._description = description
+            # Store description as step metadata (public API)
+            step.metadata = {'description': description}
             steps.append(step)
         return steps
 
@@ -67,7 +82,7 @@ class ModelStepPlanner:
             return 'majority'
 
     def _create_task_splitter(self, description: str, participants: list[str]
-        ) ->callable:
+        ) ->Callable[[str, int], list[str]]:
         """Create a task splitter function for parallel steps."""
 
         def splitter(task: str, n: int) ->list[str]:

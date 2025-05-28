@@ -6,6 +6,7 @@ import os
 import subprocess
 from collections.abc import Callable
 from typing import Protocol, Any
+from konseho.protocols import JSON
 
 
 class ToolFunction(Protocol):
@@ -18,13 +19,13 @@ from konseho.tools.mcp_adapter import MCPToolAdapter
 logger = logging.getLogger(__name__)
 
 
-@dataclass  # type: ignore[misc]
+@dataclass
 class MCPServerInstance:
     """Running MCP server instance."""
     name: str
     config: MCPServerConfig
-    process: subprocess.Popen[Any] | None = None
-    tools: dict[str, Callable[..., Any]] | None = None
+    process: subprocess.Popen[str] | None = None
+    tools: dict[str, ToolFunction] | None = None
 
     def __post_init__(self) -> None:
         if self.tools is None:
@@ -122,7 +123,7 @@ class MCPServerManager:
         for name in server_names:
             await self.stop_server(name)
 
-    def get_tool(self, tool_name: str) ->(Callable[..., Any] | None):
+    def get_tool(self, tool_name: str) ->(ToolFunction | None):
         """Get a specific tool by name.
 
         Args:
@@ -141,7 +142,7 @@ class MCPServerManager:
             return None
         return tools.get(tool_name)
 
-    def get_tools_for_server(self, server_name: str) ->dict[str, Callable[..., Any]]:
+    def get_tools_for_server(self, server_name: str) ->dict[str, ToolFunction]:
         """Get all tools from a specific server.
 
         Args:
@@ -157,13 +158,13 @@ class MCPServerManager:
             return {}
         return tools.copy()
 
-    def get_all_tools(self) ->dict[str, Callable[..., Any]]:
+    def get_all_tools(self) ->dict[str, ToolFunction]:
         """Get all available tools from all running servers.
 
         Returns:
             Dictionary of tool_name -> tool_function
         """
-        all_tools: dict[str, Callable[..., Any]] = {}
+        all_tools: dict[str, ToolFunction] = {}
         for server in self.servers.values():
             if server.tools is not None:
                 all_tools.update(server.tools)
@@ -200,26 +201,59 @@ class MCPServerManager:
                 instance.tools[tool_name] = wrapped_tool
             self._tool_registry[tool_name] = instance.name
 
-    def _get_mock_tools(self, server_name: str) ->dict[str, Callable[..., Any]]:
+    def _get_mock_tools(self, server_name: str) ->dict[str, ToolFunction]:
         """Get mock tools for demonstration.
 
         In practice, these would be discovered from the MCP server.
         """
+        # Create proper functions that match ToolFunction protocol
+        def read_file(*args: object, **kwargs: object) -> object:
+            path = args[0] if args else kwargs.get('path', '')
+            return f'Contents of {path}'
+        
+        def write_file(*args: object, **kwargs: object) -> object:
+            path = args[0] if args else kwargs.get('path', '')
+            content = args[1] if len(args) > 1 else kwargs.get('content', '')
+            return f'Wrote to {path}'
+        
+        def list_directory(*args: object, **kwargs: object) -> object:
+            path = args[0] if args else kwargs.get('path', '')
+            return f'Files in {path}'
+        
+        def search_repos(*args: object, **kwargs: object) -> object:
+            query = args[0] if args else kwargs.get('query', '')
+            return f'Repos matching {query}'
+        
+        def get_repo(*args: object, **kwargs: object) -> object:
+            repo = args[0] if args else kwargs.get('repo', '')
+            return f'Info about {repo}'
+        
+        def create_issue(*args: object, **kwargs: object) -> object:
+            repo = args[0] if args else kwargs.get('repo', '')
+            title = args[1] if len(args) > 1 else kwargs.get('title', '')
+            body = args[2] if len(args) > 2 else kwargs.get('body', '')
+            return f'Created issue in {repo}'
+        
+        def web_search(*args: object, **kwargs: object) -> object:
+            query = args[0] if args else kwargs.get('query', '')
+            count = kwargs.get('count', 10)
+            return f'Search results for {query}'
+        
+        def generic_tool(*args: object, **kwargs: object) -> object:
+            return f'Tool from {server_name}'
+        
         if 'filesystem' in server_name:
-            return {'read_file': lambda path: f'Contents of {path}',
-                'write_file': lambda path, content: f'Wrote to {path}',
-                'list_directory': lambda path='': f'Files in {path}'}
+            return {'read_file': read_file,
+                'write_file': write_file,
+                'list_directory': list_directory}
         elif 'github' in server_name:
-            return {'search_repos': lambda query: f'Repos matching {query}',
-                'get_repo': lambda repo: f'Info about {repo}',
-                'create_issue': lambda repo, title, body:
-                f'Created issue in {repo}'}
+            return {'search_repos': search_repos,
+                'get_repo': get_repo,
+                'create_issue': create_issue}
         elif 'search' in server_name:
-            return {'web_search': lambda query, count=10:
-                f'Search results for {query}'}
+            return {'web_search': web_search}
         else:
-            return {f'{server_name}_tool': lambda *args, **kwargs:
-                f'Tool from {server_name}'}
+            return {f'{server_name}_tool': generic_tool}
 
 
 class MCPToolSelector:
@@ -287,7 +321,7 @@ class MCPToolSelector:
         Returns:
             Preset configuration or None
         """
-        presets = {'coder': {'tools': ['file_read', 'file_write',
+        presets: dict[str, dict[str, object]] = {'coder': {'tools': ['file_read', 'file_write',
             'code_edit', 'shell_run'], 'tags': ['file', 'code', 'shell']},
             'researcher': {'tools': ['web_search', 'http_get', 'file_read',
             'file_write'], 'tags': ['web', 'search', 'http']}, 'analyst': {
@@ -361,7 +395,7 @@ class ToolPreset:
     exclude_tools: list[str] | None = None
     exclude_servers: list[str] | None = None
 
-    def get_tools(self) ->list[Callable[..., Any]]:
+    def get_tools(self) ->list[ToolFunction]:
         """Get tools based on this preset."""
         return self.selector.select_tools(tool_names=self.tool_names,
             servers=self.servers, tags=self.tags, exclude_tools=self.

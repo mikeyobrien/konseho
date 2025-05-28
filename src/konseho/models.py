@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from typing import Any, Optional, Union
 from pydantic import BaseModel, Field, ConfigDict
+from konseho.protocols import JSON, AgentCapabilities, StepMetadata, SearchResult, ToolResult
 
 
 class HistoryEntry(BaseModel):
@@ -64,7 +65,7 @@ class CouncilResult(BaseModel):
     agents_involved: list[str]
     summary: Optional[str] = None
     final_output: Optional[str] = None
-    metadata: dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, JSON] = Field(default_factory=dict)
 
 
 class StepResultData(BaseModel):
@@ -72,7 +73,7 @@ class StepResultData(BaseModel):
     model_config = ConfigDict(extra='forbid')
     
     output: str
-    metadata: dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, JSON] = Field(default_factory=dict)
     success: bool = True
 
 
@@ -82,12 +83,4 @@ class EventData(BaseModel):
     
     event_type: str
     timestamp: str
-    data: dict[str, Any] = Field(default_factory=dict)
-
-
-# Type aliases for complex types
-JSON = Union[dict[str, "JSON"], list["JSON"], str, int, float, bool, None]
-AgentCapabilities = dict[str, Union[str, list[str], bool, int]]
-StepMetadata = dict[str, Union[str, int, float, bool, list[str], dict[str, str]]]
-SearchResult = dict[str, Union[str, list[str], float, int]]
-ToolResult = Union[str, dict[str, str], list[str], bool, int, float]
+    data: dict[str, JSON] = Field(default_factory=dict)
