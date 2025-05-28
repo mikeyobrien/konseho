@@ -4,14 +4,19 @@ from __future__ import annotations
 import logging
 import os
 from collections.abc import Callable
-from typing import Any
+from typing import Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from mcp import MCPClient as MCPClientType
+else:
+    MCPClientType = object
 try:
     from mcp import StdioServerParameters, stdio_client
-    from strands.tools.mcp import MCPClient
+    from strands.tools.mcp import MCPClient  # type: ignore[import-not-found]
     MCP_AVAILABLE = True
 except ImportError:
     MCP_AVAILABLE = False
-    MCPClient = None
+    MCPClient = None  # type: ignore[assignment,misc]
 from konseho.mcp.config import MCPConfigManager
 logger = logging.getLogger(__name__)
 
@@ -29,13 +34,13 @@ class StrandsMCPManager:
             logger.warning(
                 "MCP support not available. Install 'mcp' package to enable MCP tools."
                 )
-            self.clients = {}
-            self.config_manager = None
+            self.clients: dict[str, object] = {}
+            self.config_manager: MCPConfigManager | None = None
             return
         self.config_manager = MCPConfigManager(config_path)
-        self.clients: dict[str, MCPClient] = {}
+        self.clients = {}
 
-    def connect_server(self, server_name: str) ->(MCPClient | None):
+    def connect_server(self, server_name: str) -> object | None:
         """Connect to an MCP server.
 
         Args:
@@ -48,8 +53,11 @@ class StrandsMCPManager:
             return None
         if server_name in self.clients:
             return self.clients[server_name]
-        server_config = self.config_manager.get_server(server_name)
-        if not server_config:
+        if self.config_manager:
+            server_config = self.config_manager.get_server(server_name)
+        else:
+            server_config = None
+        if not server_config or not self.config_manager:
             logger.error(f'No configuration found for server: {server_name}')
             return None
         try:
@@ -71,7 +79,7 @@ class StrandsMCPManager:
             logger.error(f'Failed to connect to MCP server {server_name}: {e}')
             return None
 
-    def get_tools(self, server_name: str) ->list[Any]:
+    def get_tools(self, server_name: str) -> list[object]:
         """Get tools from a specific MCP server.
 
         Args:
@@ -86,14 +94,14 @@ class StrandsMCPManager:
         if not client:
             return []
         try:
-            tools = client.list_tools_sync()
+            tools = client.list_tools_sync()  # type: ignore[attr-defined]
             logger.info(f'Retrieved {len(tools)} tools from {server_name}')
-            return tools
+            return list(tools) if hasattr(tools, '__iter__') else []
         except Exception as e:
             logger.error(f'Failed to get tools from {server_name}: {e}')
             return []
 
-    def get_search_tool(self, server_name: str=None) ->(Callable | None):
+    def get_search_tool(self, server_name: str | None = None) -> object | None:
         """Get a search tool from MCP servers.
 
         Args:
@@ -117,18 +125,20 @@ class StrandsMCPManager:
                         ) or 'brave' in tool.__name__.lower():
                         logger.info(
                             f'Found search tool by name: {tool.__name__}')
-                        return tool
+                        return tool  # type: ignore[return-value]
                 if callable(tool):
                     doc = getattr(tool, '__doc__', '')
                     if doc and 'search' in doc.lower():
                         logger.info('Found search tool by docstring')
-                        return tool
+                        return tool  # type: ignore[return-value]
                 if server_name == 'brave-search' and tools.index(tool) == 0:
                     logger.info(
                         'Using first tool from brave-search as search tool')
-                    return tool
+                    return tool  # type: ignore[return-value]
             return None
         search_servers = ['brave-search', 'tavily', 'serper', 'web-search']
+        if not self.config_manager:
+            return None
         servers = self.config_manager.list_servers()
         for server in servers:
             if any(search in server.lower() for search in search_servers):
@@ -138,29 +148,29 @@ class StrandsMCPManager:
                         ) and 'search' in tool.__name__.lower():
                         logger.info(
                             f'Found search tool in {server}: {tool.__name__}')
-                        return tool
+                        return tool  # type: ignore[return-value]
         return None
 
-    def disconnect_all(self):
+    def disconnect_all(self) -> None:
         """Disconnect all MCP clients."""
         for server_name, client in self.clients.items():
             try:
-                client.__exit__(None, None, None)
+                client.__exit__(None, None, None)  # type: ignore[attr-defined]
                 logger.info(f'Disconnected from MCP server: {server_name}')
             except Exception as e:
                 logger.error(f'Error disconnecting from {server_name}: {e}')
         self.clients.clear()
 
-    def __enter__(self):
+    def __enter__(self) -> 'StrandsMCPManager':
         """Context manager support."""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: object) -> None:
         """Cleanup on exit."""
         self.disconnect_all()
 
 
-def get_mcp_search_provider():
+def get_mcp_search_provider() -> object | None:
     """Get a search provider from available MCP servers.
 
     This is a convenience function that:
@@ -185,7 +195,7 @@ def get_mcp_search_provider():
                 provider_name = 'tavily'
             else:
                 provider_name = 'mcp-search'
-            return MCPSearchProvider(search_tool, provider_name)
+            return MCPSearchProvider(search_tool, provider_name)  # type: ignore[arg-type]
     except Exception as e:
         logger.error(f'Failed to get MCP search provider: {e}')
     return None

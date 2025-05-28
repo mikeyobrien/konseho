@@ -7,10 +7,11 @@ and the new protocol interfaces, allowing for gradual migration.
 """
 import asyncio
 from typing import Any
+from collections.abc import Callable
 from konseho.agents.base import AgentWrapper
 from konseho.core.context import Context
 from konseho.core.steps import Step, StepResult
-from konseho.protocols import IAgent, IContext, IStep, IStepResult
+from konseho.protocols import IAgent, IContext, IStep, IStepResult, AgentCapabilities, StepMetadata, JSON
 
 
 class AgentAdapter(IAgent):
@@ -38,9 +39,9 @@ class AgentAdapter(IAgent):
         """Process a task and return result."""
         return await self._agent.work_on(task)
 
-    def get_capabilities(self) ->dict[str, Any]:
+    def get_capabilities(self) -> AgentCapabilities:
         """Return agent capabilities."""
-        capabilities = {}
+        capabilities: AgentCapabilities = {}
         if hasattr(self._agent, '_strands_agent'):
             strands_agent = self._agent._strands_agent
             if hasattr(strands_agent, 'tools'):
@@ -76,7 +77,8 @@ class StepAdapter(IStep):
             result = await self._step.execute(task, ctx)
         if isinstance(result, StepResult):
             return StepResultAdapter(result)
-        return result
+        # This should not happen if step properly returns StepResult
+        raise TypeError(f"Step {self._step.name} returned {type(result)} instead of StepResult")
 
     def validate(self) ->list[str]:
         """Validate step configuration."""
@@ -102,7 +104,7 @@ class StepResultAdapter(IStepResult):
         return self._result.output
 
     @property
-    def metadata(self) ->dict[str, Any]:
+    def metadata(self) -> StepMetadata:
         """Additional metadata."""
         return self._result.metadata
 
@@ -123,19 +125,21 @@ class ContextAdapter(IContext):
         """
         self._context = context
 
-    def add(self, key: str, value: Any) ->None:
+    def add(self, key: str, value: JSON) -> None:
         """Add a key-value pair to context."""
         self._context.add(key, value)
 
-    def get(self, key: str, default: Any=None) ->Any:
+    def get(self, key: str, default: JSON = None) -> JSON:
         """Get value from context."""
-        return self._context.get(key, default)
+        result = self._context.get(key, default)
+        # Cast to JSON type for type safety
+        return result  # type: ignore[no-any-return]
 
-    def update(self, data: dict[str, Any]) ->None:
+    def update(self, data: dict[str, JSON]) -> None:
         """Update context with multiple key-value pairs."""
         self._context.update(data)
 
-    def to_dict(self) ->dict[str, Any]:
+    def to_dict(self) -> dict[str, JSON]:
         """Export context as dictionary."""
         return self._context.to_dict()
 
@@ -169,7 +173,7 @@ class MockAgent(IAgent):
         self._name = name
         self._model = model
         self._response = response
-        self._capabilities = {'mock': True}
+        self._capabilities: AgentCapabilities = {'mock': True}
 
     @property
     def name(self) ->str:
@@ -185,7 +189,7 @@ class MockAgent(IAgent):
         """Process a task and return mock response."""
         return self._response
 
-    def get_capabilities(self) ->dict[str, Any]:
+    def get_capabilities(self) -> AgentCapabilities:
         """Return mock capabilities."""
         return self._capabilities
 
@@ -234,7 +238,7 @@ class MockStepResult(IStepResult):
         """
         self._output = output
         self._success = success
-        self._metadata = {'mock': True}
+        self._metadata: StepMetadata = {'mock': True}
 
     @property
     def output(self) ->str:
@@ -242,7 +246,7 @@ class MockStepResult(IStepResult):
         return self._output
 
     @property
-    def metadata(self) ->dict[str, Any]:
+    def metadata(self) -> StepMetadata:
         """Metadata."""
         return self._metadata
 
@@ -255,25 +259,25 @@ class MockStepResult(IStepResult):
 class MockEventEmitter:
     """Mock event emitter for testing."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize mock event emitter."""
-        self.events: list[tuple[str, Any]] = []
-        self.handlers: dict[str, list[Any]] = {}
+        self.events: list[tuple[str, JSON]] = []
+        self.handlers: dict[str, list[Callable[[str, JSON], None]]] = {}
 
-    def on(self, event: str, handler: Any) ->None:
+    def on(self, event: str, handler: Callable[[str, JSON], None]) -> None:
         """Register an event handler."""
         if event not in self.handlers:
             self.handlers[event] = []
         self.handlers[event].append(handler)
 
-    def emit(self, event: str, data: Any=None) ->None:
+    def emit(self, event: str, data: JSON = None) -> None:
         """Emit an event and record it."""
         self.events.append((event, data))
         if event in self.handlers:
             for handler in self.handlers[event]:
                 handler(event, data)
 
-    async def emit_async(self, event: str, data: Any=None) ->None:
+    async def emit_async(self, event: str, data: JSON = None) -> None:
         """Emit an event asynchronously."""
         self.events.append((event, data))
         if event in self.handlers:
@@ -283,7 +287,7 @@ class MockEventEmitter:
                 else:
                     handler(event, data)
 
-    def get_emitted_events(self) ->list[tuple[str, Any]]:
+    def get_emitted_events(self) -> list[tuple[str, JSON]]:
         """Get all emitted events for verification."""
         return self.events
 
@@ -295,17 +299,21 @@ class MockEventEmitter:
 class MockOutputManager:
     """Mock output manager for testing."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize mock output manager."""
-        self.saved_outputs: list[dict[str, Any]] = []
-        self.outputs = []
-        self.step_results: list[Any] = []
+        self.saved_outputs: list[dict[str, JSON]] = []
+        self.outputs: list[dict[str, JSON]] = []
+        self.step_results: list[object] = []
 
-    def save_formatted_output(self, task: str, result: Any, council_name:
-        str='council', metadata: (dict[str, Any] | None)=None) ->str:
+    def save_formatted_output(self, task: str, result: object, council_name:
+        str='council', metadata: (dict[str, JSON] | None)=None) -> str:
         """Mock save output and return fake path."""
-        output_data = {'task': task, 'result': result, 'council_name':
-            council_name, 'metadata': metadata}
+        output_data: dict[str, JSON] = {
+            'task': task, 
+            'result': str(result),  # Convert to string for JSON compatibility
+            'council_name': council_name, 
+            'metadata': metadata
+        }
         self.saved_outputs.append(output_data)
         self.outputs.append(output_data)
         return f'/mock/outputs/{council_name}_{len(self.saved_outputs)}.json'
@@ -317,6 +325,6 @@ class MockOutputManager:
             self.saved_outputs = self.saved_outputs[cleaned:]
         return cleaned
 
-    def get_saved_outputs(self) ->list[dict[str, Any]]:
+    def get_saved_outputs(self) -> list[dict[str, JSON]]:
         """Get all saved outputs for verification."""
         return self.saved_outputs
