@@ -12,7 +12,7 @@ These vulnerabilities could lead to system compromise and must be addressed befo
 **Action**: Create a security-fixes branch and address these immediately with proper input validation and sanitization.
 
 **Progress**: 
-- #21 Fixed on refactor/dependency-injection branch - Added command whitelist, removed shell=True usage, implemented proper quote handling
+- #21 Fixed on security/fix-command-injection branch - Added command allowlist, removed shell=True usage, implemented proper quote handling, added user approval system
 
 ### P2 - Production Stability Issues (Fix Before Production)
 These issues can cause crashes, data loss, or resource exhaustion in production.

@@ -43,7 +43,7 @@ def terminal_approval_callback(command: str, error_msg: str) -> bool:
             print("Please enter 'yes' or 'no'")
 
 
-# Whitelist of allowed commands for basic operations
+# Allowlist of allowed commands for basic operations
 # This can be extended based on requirements
 ALLOWED_COMMANDS = {
     # Basic file operations
@@ -62,23 +62,23 @@ ALLOWED_COMMANDS = {
 
 
 def add_allowed_commands(*commands: str) -> None:
-    """Add commands to the allowed commands whitelist.
+    """Add commands to the allowed commands allowlist.
     
     Args:
-        *commands: Command names to add to the whitelist
+        *commands: Command names to add to the allowlist
         
     Example:
         add_allowed_commands("docker", "kubectl", "terraform")
     """
     ALLOWED_COMMANDS.update(commands)
-    logger.info(f"Added {len(commands)} commands to whitelist: {', '.join(commands)}")
+    logger.info(f"Added {len(commands)} commands to allowlist: {', '.join(commands)}")
 
 
 def remove_allowed_commands(*commands: str) -> None:
-    """Remove commands from the allowed commands whitelist.
+    """Remove commands from the allowed commands allowlist.
     
     Args:
-        *commands: Command names to remove from the whitelist
+        *commands: Command names to remove from the allowlist
         
     Example:
         remove_allowed_commands("rm", "dd")  # Remove dangerous commands
@@ -86,7 +86,7 @@ def remove_allowed_commands(*commands: str) -> None:
     for cmd in commands:
         ALLOWED_COMMANDS.discard(cmd)
     logger.info(
-        f"Removed {len(commands)} commands from whitelist: {', '.join(commands)}"
+        f"Removed {len(commands)} commands from allowlist: {', '.join(commands)}"
     )
 
 
@@ -120,7 +120,7 @@ def validate_command(command: str) -> tuple[bool, str]:
     except ValueError as e:
         return False, f"Failed to parse command: {str(e)}"
     
-    # Check against whitelist
+    # Check against allowlist
     if base_command not in ALLOWED_COMMANDS:
         return False, f"Command '{base_command}' is not in the allowed command list"
     
@@ -202,7 +202,7 @@ def shell_run(
 ) -> dict[str, Any]:
     """Execute shell commands with timeout and output capture.
     
-    SECURITY NOTE: This function validates commands against a whitelist
+    SECURITY NOTE: This function validates commands against an allowlist
     to prevent command injection. Use allow_unsafe=True only when
     executing trusted, internally-generated commands.
     

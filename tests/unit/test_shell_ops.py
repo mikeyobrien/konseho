@@ -6,7 +6,10 @@ import os
 import tempfile
 from unittest.mock import patch
 
-from konseho.tools.shell_ops import shell_run, validate_command, execute_piped_commands, terminal_approval_callback
+from konseho.tools.shell_ops import (
+    shell_run, validate_command, execute_piped_commands, terminal_approval_callback,
+    add_allowed_commands, remove_allowed_commands, get_allowed_commands
+)
 
 
 class TestShellOps:
@@ -24,12 +27,12 @@ class TestShellOps:
         """Test handling of non-existent command."""
         result = shell_run("this_command_does_not_exist_12345")
         
-        # Should have validation error since command not in whitelist
+        # Should have validation error since command not in allowlist
         assert result["returncode"] == -1
         assert "not in the allowed command list" in result["error"]
     
-    def test_whitelist_enforcement(self):
-        """Test that only whitelisted commands are allowed."""
+    def test_allowlist_enforcement(self):
+        """Test that only allowlisted commands are allowed."""
         # Try to run a dangerous command
         result = shell_run("rm -rf /tmp/test")
         
@@ -210,7 +213,7 @@ class TestShellOps:
     
     def test_git_commands(self):
         """Test that common git commands work."""
-        # git is in the whitelist, so these should pass validation
+        # git is in the allowlist, so these should pass validation
         is_valid, error = validate_command("git status")
         assert is_valid is True
         
@@ -231,8 +234,8 @@ class TestShellOps:
         def mock_approve(cmd, err):
             return True
         
-        # Try to run a command that's not in whitelist but will work when approved
-        # Using 'true' command which exits with 0 but isn't in whitelist
+        # Try to run a command that's not in allowlist but will work when approved
+        # Using 'true' command which exits with 0 but isn't in allowlist
         result = shell_run("true", approval_callback=mock_approve)
         
         # Should execute since it was approved
@@ -294,3 +297,39 @@ class TestShellOps:
         approved = terminal_approval_callback("rm -rf /", "Command 'rm' is not in the allowed command list")
         
         assert approved is False
+    
+    def test_allowlist_management(self):
+        """Test adding and removing commands from allowlist."""
+        # Get initial allowlist
+        initial = get_allowed_commands()
+        
+        # Add new commands
+        add_allowed_commands("docker", "kubectl")
+        current = get_allowed_commands()
+        
+        assert "docker" in current
+        assert "kubectl" in current
+        assert len(current) == len(initial) + 2
+        
+        # Test that added commands now work
+        assert validate_command("docker ps")[0] is True
+        assert validate_command("kubectl get pods")[0] is True
+        
+        # Remove commands
+        remove_allowed_commands("docker", "kubectl")
+        current = get_allowed_commands()
+        
+        assert "docker" not in current
+        assert "kubectl" not in current
+        assert len(current) == len(initial)
+        
+        # Test that removed commands no longer work
+        assert validate_command("docker ps")[0] is False
+        assert validate_command("kubectl get pods")[0] is False
+        
+        # Test removing non-existent command (should not error)
+        remove_allowed_commands("nonexistent")  # Should not raise
+        
+        # Verify basic commands still work
+        assert "echo" in current
+        assert "git" in current

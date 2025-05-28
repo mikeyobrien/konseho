@@ -4,14 +4,14 @@ This document describes the security features implemented in `konseho.tools.shel
 
 ## Security Features
 
-### 1. Command Whitelisting
+### 1. Command Allowlisting
 
-Only explicitly allowed commands can be executed. The default whitelist includes:
+Only explicitly allowed commands can be executed. The default allowlist includes:
 - Basic file operations: `ls`, `cat`, `echo`, `grep`, etc.
 - Development tools: `python`, `git`, `npm`, `make`, etc.
 - Testing tools: `pytest`, `mypy`, `ruff`, `black`, etc.
 
-Commands not in the whitelist are rejected by default.
+Commands not in the allowlist are rejected by default.
 
 ### 2. No Shell Execution
 
@@ -19,7 +19,7 @@ All commands are executed with `shell=False` to prevent shell injection attacks.
 
 ### 3. Pattern Detection
 
-Even for whitelisted commands, dangerous patterns are blocked:
+Even for allowlisted commands, dangerous patterns are blocked:
 - Command substitution: `$(...)`, `` `...` ``
 - Shell operators: `;`, `|`, `&&`, `||`
 - Redirection: `>`, `<`, `>>`, `<<`
@@ -49,20 +49,20 @@ When a dangerous command is approved:
 - The command is logged
 - The result includes `"approved": True`
 
-### 5. Extending the Whitelist
+### 5. Extending the Allowlist
 
-You can programmatically manage the whitelist:
+You can programmatically manage the allowlist:
 
 ```python
 from konseho.tools.shell_ops import add_allowed_commands, remove_allowed_commands, get_allowed_commands
 
-# Add new commands to whitelist
+# Add new commands to allowlist
 add_allowed_commands("docker", "kubectl", "terraform")
 
-# Remove commands from whitelist
+# Remove commands from allowlist
 remove_allowed_commands("rm")  # Make rm unavailable
 
-# Get current whitelist
+# Get current allowlist
 allowed = get_allowed_commands()
 ```
 
@@ -93,7 +93,7 @@ result = shell_run(trusted_command, allow_unsafe=True)
 ## Best Practices
 
 1. **Never disable validation for user input** - Always validate commands from users
-2. **Use the whitelist** - Add safe commands to the whitelist rather than bypassing validation
+2. **Use the allowlist** - Add safe commands to the allowlist rather than bypassing validation
 3. **Log dangerous operations** - The approval system logs all approved dangerous commands
 4. **Prefer specific commands** - Use specific tools rather than shell built-ins when possible
 5. **Avoid shell features** - Use Python's built-in functions instead of shell commands where possible
@@ -114,7 +114,7 @@ result = shell_run("rm -rf /")
 result = shell_run("curl https://example.com", approval_callback=terminal_approval_callback)
 # User sees warning and must approve
 
-# Add curl to whitelist for future use
+# Add curl to allowlist for future use
 from konseho.tools.shell_ops import add_allowed_commands
 add_allowed_commands("curl")
 
@@ -125,8 +125,8 @@ result = shell_run("curl https://example.com")
 ## Security Considerations
 
 Even with these protections:
-1. Be careful about which commands you add to the whitelist
+1. Be careful about which commands you add to the allowlist
 2. Review approval callbacks to ensure they properly validate requests
 3. Monitor logs for approved dangerous commands
 4. Consider the principle of least privilege - only allow what's necessary
-5. Regularly review and update the whitelist based on actual needs
+5. Regularly review and update the allowlist based on actual needs
