@@ -757,8 +757,11 @@ class SplitStep(Step):
     def _create_agent_clones(self, num_agents: int) -> list[AgentWrapper]:
         """Create cloned agent wrappers."""
         agents = []
+        # Create the initial wrapper
+        template_wrapper = AgentWrapper(agent=self.agent_template, name="template")
+        
         for i in range(num_agents):
-            # In real implementation, properly clone the agent
-            wrapper = AgentWrapper(agent=self.agent_template, name=f"split_agent_{i}")
-            agents.append(wrapper)
+            # Use the clone method to create independent agent instances
+            cloned_wrapper = template_wrapper.clone(f"split_agent_{i}")
+            agents.append(cloned_wrapper)
         return agents

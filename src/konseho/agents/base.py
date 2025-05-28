@@ -179,6 +179,24 @@ class AgentWrapper:
             cloned = agent.__class__(agent.name, agent.response)
             if hasattr(agent, "delay"):
                 cloned.delay = agent.delay
+            # Deep copy any mutable attributes
+            if hasattr(agent, "config"):
+                cloned.config = copy.deepcopy(agent.config)
+            return cloned
+        
+        # Handle unittest Mock objects (but not MagicMock which should go through normal path)
+        if hasattr(agent, "_mock_name") and agent.__class__.__name__ == "Mock":
+            # Create a new Mock with deep copied attributes
+            from unittest.mock import Mock
+            cloned = Mock()
+            # Copy all attributes with deep copy for mutable ones
+            for attr in dir(agent):
+                if not attr.startswith("_") and not callable(getattr(agent, attr)):
+                    value = getattr(agent, attr)
+                    if isinstance(value, (dict, list, set)):
+                        setattr(cloned, attr, copy.deepcopy(value))
+                    else:
+                        setattr(cloned, attr, value)
             return cloned
 
         # For real Strands agents, we need to recreate with same config

@@ -353,14 +353,14 @@ class TestMCPHighLevel:
         mcp.tool_selector.select_tools = mock_select
 
         # Get tools with multiple filters
-        tools = await mcp.get_tools(
+        tools = mcp.get_tools(
             tools=["file_read", "file_write"], servers=["filesystem"]
         )
 
         mock_select.assert_called_once_with(
             tool_names=["file_read", "file_write"],
-            servers=["filesystem"],
-            tags=None,
-            preset=None,
+            server_names=["filesystem"],
+            exclude_tools=None,
+            exclude_servers=None,
         )
         assert len(tools) == 2

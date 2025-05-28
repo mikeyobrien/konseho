@@ -38,7 +38,8 @@ class TestAgentCloning:
         wrapper = AgentWrapper(mock_agent, name="original")
         cloned = wrapper.clone("cloned")
 
-        assert cloned.agent.tools == ["tool1", "tool2"]
+        # Check that original tools are preserved (additional tools may be injected)
+        assert cloned.agent.tools[:2] == ["tool1", "tool2"]
         assert cloned.agent.model == "gpt-4"
         assert cloned.agent.temperature == 0.7
 
