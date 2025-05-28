@@ -4,7 +4,10 @@ from __future__ import annotations
 import hashlib
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any
+from typing import TypeVar
+from konseho.protocols import JSON
+
+T = TypeVar('T')
 
 
 class ParallelExecutor:
@@ -17,10 +20,10 @@ class ParallelExecutor:
             max_workers: Maximum number of concurrent workers
         """
         self.max_workers = max_workers
-        self._cache = {}
+        self._cache: dict[str, object] = {}
 
-    def execute_parallel(self, tool: Callable, args_list: list[dict[str, Any]]
-        ) ->list[Any]:
+    def execute_parallel(self, tool: object, args_list: list[dict[str, JSON]]
+        ) ->list[object]:
         """Execute tool with different arguments in parallel.
 
         Args:
@@ -32,10 +35,11 @@ class ParallelExecutor:
         """
         if not args_list:
             return []
-        results = {}
-        unique_work = {}
+        results: dict[int, object] = {}
+        unique_work: dict[str, tuple[dict[str, JSON], list[int]]] = {}
         for i, args in enumerate(args_list):
-            cache_key = self._get_cache_key(tool.__name__, args)
+            tool_name = getattr(tool, '__name__', 'unnamed_tool')
+            cache_key = self._get_cache_key(tool_name, args)
             if cache_key in self._cache:
                 results[i] = self._cache[cache_key]
             else:
@@ -44,9 +48,12 @@ class ParallelExecutor:
                 unique_work[cache_key][1].append(i)
         if unique_work:
             with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-                futures = {executor.submit(tool, **args_dict): (cache_key,
-                    indices) for cache_key, (args_dict, indices) in
-                    unique_work.items()}
+                # Execute tools with type: ignore for dynamic callable
+                from concurrent.futures import Future
+                futures: dict[Future[object], tuple[str, list[int]]] = {}
+                for cache_key, (args_dict, indices) in unique_work.items():
+                    future: Future[object] = executor.submit(tool, **args_dict)  # type: ignore[arg-type]
+                    futures[future] = (cache_key, indices)
                 for future in as_completed(futures):
                     cache_key, indices = futures[future]
                     try:
@@ -60,7 +67,7 @@ class ParallelExecutor:
                             results[idx] = error_msg
         return [results[i] for i in range(len(args_list))]
 
-    def _get_cache_key(self, tool_name: str, args: dict[str, Any]) ->str:
+    def _get_cache_key(self, tool_name: str, args: dict[str, JSON]) ->str:
         """Generate cache key for deduplication.
 
         Args:

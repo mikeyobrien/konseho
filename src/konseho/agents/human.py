@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable
 from .base import AgentWrapper
+from konseho.models import HistoryEntry
 
 
 class HumanAgent(AgentWrapper):
@@ -21,11 +22,11 @@ class HumanAgent(AgentWrapper):
         self.input_handler = input_handler or self._default_input_handler
         self._history = []
 
-    async def work_on(self, task: str) ->str:
+    async def work_on(self, task: str, buffered: bool = False) ->str:
         """Prompt human for input."""
         loop = asyncio.get_event_loop()
         response = await loop.run_in_executor(None, self.input_handler, task)
-        self._history.append({'task': task, 'response': response})
+        self._history.append(HistoryEntry(task=task, response=response))
         return response
 
     def _default_input_handler(self, task: str) ->str:

@@ -7,8 +7,9 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any
+from typing import Any  # TODO: Remove Any usage
 from konseho.protocols import JSON
+from collections.abc import Awaitable
 logger = logging.getLogger(__name__)
 
 
@@ -37,7 +38,7 @@ class EventType(Enum):
     SPLIT_COMPLETED = 'split:complete'
 
 
-@dataclass  # type: ignore[misc]
+@dataclass
 class CouncilEvent:
     """Event data structure for council execution events."""
     type: EventType
@@ -51,27 +52,39 @@ class EventEmitter:
 
     def __init__(self) -> None:
         """Initialize event emitter."""
-        self._listeners: dict[str, list[Callable[..., Any]]] = {}
-        self._async_listeners: dict[str, list[Callable[..., Any]]] = {}
+        # Event handlers that return None
+        self._listeners: dict[str, list[Callable[[str, JSON], None]]] = {}
+        self._async_listeners: dict[str, list[Callable[[str, JSON], Awaitable[None]]]] = {}
 
-    def on(self, event: str, handler: Callable[..., Any]) ->None:
+    def on(self, event: str, handler: Callable[[str, JSON], None] | Callable[[str, JSON], Awaitable[None]]) ->None:
         """Register an event handler."""
         if asyncio.iscoroutinefunction(handler):
             if event not in self._async_listeners:
                 self._async_listeners[event] = []
-            self._async_listeners[event].append(handler)
+            # Cast to proper async type
+            from typing import cast
+            async_handler = cast(Callable[[str, JSON], Awaitable[None]], handler)
+            self._async_listeners[event].append(async_handler)
         else:
             if event not in self._listeners:
                 self._listeners[event] = []
-            self._listeners[event].append(handler)
+            # Cast to proper sync type
+            from typing import cast
+            sync_handler = cast(Callable[[str, JSON], None], handler)
+            self._listeners[event].append(sync_handler)
 
-    def off(self, event: str, handler: Callable[..., Any]) ->None:
+    def off(self, event: str, handler: Callable[[str, JSON], None] | Callable[[str, JSON], Awaitable[None]]) ->None:
         """Remove an event handler."""
-        if event in self._listeners and handler in self._listeners[event]:
-            self._listeners[event].remove(handler)
-        if event in self._async_listeners and handler in self._async_listeners[
-            event]:
-            self._async_listeners[event].remove(handler)
+        if event in self._listeners:
+            try:
+                self._listeners[event].remove(handler)  # type: ignore[arg-type]
+            except ValueError:
+                pass
+        if event in self._async_listeners:
+            try:
+                self._async_listeners[event].remove(handler)  # type: ignore[arg-type]
+            except ValueError:
+                pass
 
     def emit(self, event: str, data: JSON=None) ->None:
         """Emit an event to all listeners."""
@@ -84,11 +97,11 @@ class EventEmitter:
                     logger.error(f'Error in event handler: {e}')
         if event in self._async_listeners:
             loop = asyncio.get_event_loop()
-            for handler in self._async_listeners[event]:
-                loop.create_task(self._call_async_handler(handler, event, data)
+            for async_handler in self._async_listeners[event]:
+                loop.create_task(self._call_async_handler(async_handler, event, data)
                     )
 
-    async def _call_async_handler(self, handler: Callable[..., Any], event: str, data:
+    async def _call_async_handler(self, handler: Callable[[str, JSON], Awaitable[None]], event: str, data:
         JSON) ->None:
         """Call an async event handler."""
         try:
@@ -107,7 +120,7 @@ class EventEmitter:
                 except Exception as e:
                     logger.error(f'Error in event handler: {e}')
         if event in self._async_listeners:
-            for handler in self._async_listeners[event]:
-                tasks.append(self._call_async_handler(handler, event, data))
+            for async_handler in self._async_listeners[event]:
+                tasks.append(self._call_async_handler(async_handler, event, data))
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)

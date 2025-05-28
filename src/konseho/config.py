@@ -3,7 +3,8 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import Any
+from typing import Any  # TODO: Remove Any usage
+from konseho.protocols import JSON
 try:
     from dotenv import load_dotenv
     load_dotenv()
@@ -17,7 +18,7 @@ class ModelConfig:
     provider: str
     model_id: str
     api_key: str | None = None
-    additional_args: dict[str, Any] | None = None
+    additional_args: dict[str, JSON] | None = None
 
 
 def get_model_config() ->ModelConfig:
@@ -52,7 +53,7 @@ def get_model_config() ->ModelConfig:
             'anthropic.claude-3-sonnet-20240229-v1:0')
 
 
-def create_model_from_config(config: (ModelConfig | None)=None):
+def create_model_from_config(config: (ModelConfig | None)=None) -> object:
     """Create a Strands model instance from configuration.
 
     Args:
@@ -66,23 +67,44 @@ def create_model_from_config(config: (ModelConfig | None)=None):
     try:
         if config.provider == 'openai':
             from strands.models.openai import OpenAIModel
-            return OpenAIModel(client_args={'api_key': config.api_key},
-                model_id=config.model_id, **config.additional_args or {})
+            # Extract specific args for OpenAI
+            additional_args = config.additional_args or {}
+            temperature = additional_args.get('temperature', 0.7)
+            max_tokens = additional_args.get('max_tokens', 2000)
+            # Type narrowing
+            if isinstance(temperature, (int, float)):
+                temp_val = float(temperature)
+            else:
+                temp_val = 0.7
+            if isinstance(max_tokens, int):
+                max_tok_val = max_tokens
+            else:
+                max_tok_val = 2000
+            model = OpenAIModel(client_args={'api_key': config.api_key},
+                model_id=config.model_id)
+            # Set additional config attributes
+            setattr(model, 'temperature', temp_val)
+            setattr(model, 'max_tokens', max_tok_val)
+            return model
         elif config.provider == 'anthropic':
             from strands.models.anthropic import AnthropicModel
             additional_args = config.additional_args or {}
-            max_tokens = additional_args.get('max_tokens', 2000)
-            temperature = additional_args.get('temperature', 0.7)
-            model = AnthropicModel(client_args={'api_key': config.api_key},
-                model_id=config.model_id)
-            model.config = {'max_tokens': max_tokens, 'model_id': config.
-                model_id, 'temperature': temperature}
-            return model
+            max_tokens_val = additional_args.get('max_tokens', 2000)
+            temperature_val = additional_args.get('temperature', 0.7)
+            # Type narrowing
+            max_tokens = str(max_tokens_val) if not isinstance(max_tokens_val, str) else max_tokens_val
+            temperature = float(temperature_val) if isinstance(temperature_val, (int, float, str)) else 0.7
+            anthropic_model = AnthropicModel(client_args={'api_key': config.api_key},
+                model_id=config.model_id, max_tokens=max_tokens)
+            # Set additional config as needed
+            setattr(anthropic_model, 'temperature', temperature)
+            return anthropic_model
         elif config.provider == 'ollama':
             from strands.models.ollama import OllamaModel
-            return OllamaModel(model_id=config.model_id, host=config.
-                additional_args.get('host') if config.additional_args else None
-                )
+            host_val = config.additional_args.get('host') if config.additional_args else None
+            # Type narrowing for host
+            host = str(host_val) if host_val is not None else None
+            return OllamaModel(model_id=config.model_id, host=host)
         elif config.provider == 'bedrock':
             return config.model_id
         else:
