@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import Any
+from konseho.protocols import JSON
 logger = logging.getLogger(__name__)
 
 
@@ -36,24 +37,24 @@ class EventType(Enum):
     SPLIT_COMPLETED = 'split:complete'
 
 
-@dataclass
+@dataclass  # type: ignore[misc]
 class CouncilEvent:
     """Event data structure for council execution events."""
     type: EventType
-    data: dict[str, Any]
-    metadata: dict[str, Any] | None = field(default_factory=dict)
+    data: dict[str, JSON]
+    metadata: dict[str, JSON] | None = field(default_factory=dict)
     timestamp: datetime = field(default_factory=datetime.now)
 
 
 class EventEmitter:
     """Simple event emitter for council execution events."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize event emitter."""
-        self._listeners: dict[str, list[Callable]] = {}
-        self._async_listeners: dict[str, list[Callable]] = {}
+        self._listeners: dict[str, list[Callable[..., Any]]] = {}
+        self._async_listeners: dict[str, list[Callable[..., Any]]] = {}
 
-    def on(self, event: str, handler: Callable) ->None:
+    def on(self, event: str, handler: Callable[..., Any]) ->None:
         """Register an event handler."""
         if asyncio.iscoroutinefunction(handler):
             if event not in self._async_listeners:
@@ -64,7 +65,7 @@ class EventEmitter:
                 self._listeners[event] = []
             self._listeners[event].append(handler)
 
-    def off(self, event: str, handler: Callable) ->None:
+    def off(self, event: str, handler: Callable[..., Any]) ->None:
         """Remove an event handler."""
         if event in self._listeners and handler in self._listeners[event]:
             self._listeners[event].remove(handler)
@@ -72,7 +73,7 @@ class EventEmitter:
             event]:
             self._async_listeners[event].remove(handler)
 
-    def emit(self, event: str, data: Any=None) ->None:
+    def emit(self, event: str, data: JSON=None) ->None:
         """Emit an event to all listeners."""
         logger.debug(f'Event emitted: {event}', extra={'data': data})
         if event in self._listeners:
@@ -87,15 +88,15 @@ class EventEmitter:
                 loop.create_task(self._call_async_handler(handler, event, data)
                     )
 
-    async def _call_async_handler(self, handler: Callable, event: str, data:
-        Any) ->None:
+    async def _call_async_handler(self, handler: Callable[..., Any], event: str, data:
+        JSON) ->None:
         """Call an async event handler."""
         try:
             await handler(event, data)
         except Exception as e:
             logger.error(f'Error in async event handler: {e}')
 
-    async def emit_async(self, event: str, data: Any=None) ->None:
+    async def emit_async(self, event: str, data: JSON=None) ->None:
         """Emit an event asynchronously, waiting for all handlers to complete."""
         logger.debug(f'Event emitted (async): {event}', extra={'data': data})
         tasks = []

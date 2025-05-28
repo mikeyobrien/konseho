@@ -8,6 +8,7 @@ from abc import ABC, abstractmethod
 from collections import Counter
 from collections.abc import Callable
 from typing import Any
+from konseho.protocols import JSON
 from strands import Agent
 from ..agents.base import AgentWrapper
 from .context import Context
@@ -55,13 +56,13 @@ class Step(ABC):
         """
         return []
 
-    def _build_prompt_with_time(self, task: str, context: Context=None) ->str:
+    def _build_prompt_with_time(self, task: str, context: Context | None = None) ->str:
         """Build a prompt that includes current time and context."""
         from datetime import datetime
         current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         time_info = f'Current date and time: {current_time}'
         parts = [time_info]
-        if context and context.to_prompt_context():
+        if context is not None and context.to_prompt_context():
             parts.append(context.to_prompt_context())
         parts.append(f'Task: {task}')
         return '\n\n'.join(parts)
@@ -135,8 +136,7 @@ Vote for the best proposal. Reply with 'I vote for: [proposal name]' or 'I absta
     def _extract_vote(self, response: str, proposals: dict[str, str]) ->(str |
         None):
         """Extract vote from agent response."""
-        if not isinstance(response, str):
-            response = str(response)
+        response = str(response)
         if 'abstain' in response.lower():
             return 'ABSTAIN'
         vote_match = re.search('I vote for:\\s*(.+?)(?:\\n|$)', response,
@@ -144,15 +144,14 @@ Vote for the best proposal. Reply with 'I vote for: [proposal name]' or 'I absta
         if vote_match:
             voted_text = vote_match.group(1).strip()
             for name, proposal in proposals.items():
-                proposal_str = str(proposal) if not isinstance(proposal, str
-                    ) else proposal
+                proposal_str = str(proposal)
                 if name.lower() in voted_text.lower() or voted_text.lower(
                     ) in proposal_str.lower():
                     return proposal
         return None
 
     def _count_majority_votes(self, votes: dict[str, str], proposals: dict[
-        str, str], abstentions: int) ->dict[str, Any]:
+        str, str], abstentions: int) ->dict[str, object]:
         """Count votes and determine winner by majority."""
         vote_counts = Counter(votes.values())
         proposal_votes = dict.fromkeys(proposals.keys(), 0)
@@ -175,7 +174,7 @@ Vote for the best proposal. Reply with 'I vote for: [proposal name]' or 'I absta
             'abstentions': abstentions}
 
     def _count_weighted_votes(self, votes: dict[str, str], proposals: dict[
-        str, str]) ->dict[str, Any]:
+        str, str]) ->dict[str, object]:
         """Count votes with agent expertise weighting."""
         weighted_scores = dict.fromkeys(proposals.keys(), 0.0)
         for agent in self.agents:
@@ -289,13 +288,15 @@ Provide your updated proposal or critique others."""
     async def _get_proposal(self, agent: AgentWrapper, prompt: str) ->str:
         """Get a proposal from an agent."""
         result = await agent.work_on(prompt)
-        if isinstance(result, dict):
-            if 'message' in result:
-                return str(result['message'])
-            elif 'content' in result:
-                return str(result['content'])
-            else:
-                return str(result)
+        # Handle various response formats
+        if hasattr(result, '__getitem__'):
+            try:
+                if 'message' in result:  # type: ignore[operator]
+                    return str(result['message'])  # type: ignore[index]
+                elif 'content' in result:  # type: ignore[operator]
+                    return str(result['content'])  # type: ignore[index]
+            except (TypeError, KeyError):
+                pass
         return str(result)
 
     def _create_debate_prompt(self, proposals: dict[str, str], round_num: int
@@ -311,7 +312,7 @@ Provide your updated proposal or critique others."""
         return prompt
 
     async def _select_winner(self, proposals: dict[str, str], all_proposals:
-        list[str], task: str, context: Context) ->dict[str, Any]:
+        list[str], task: str, context: Context) ->dict[str, object]:
         """Select the winning proposal based on voting strategy."""
         original_proposals = {k: v for k, v in proposals.items() if 
             '_round_' not in k}
@@ -352,7 +353,7 @@ Proposals:
 class ParallelStep(Step):
     """Agents work on different aspects simultaneously."""
 
-    def __init__(self, agents: list[AgentWrapper], task_splitter: (Callable |
+    def __init__(self, agents: list[AgentWrapper], task_splitter: (Callable[..., Any] |
         None)=None, result_combiner: (AgentWrapper | None)=None):
         """Initialize parallel step.
 
@@ -406,6 +407,8 @@ class ParallelStep(Step):
         combine_prompt += """
 
 Please synthesize these results into a coherent, unified response that captures the key insights and findings from all agents."""
+        if self.result_combiner is None:
+            raise ValueError("result_combiner is required for LLM combination")
         combined_result = await self.result_combiner.work_on(combine_prompt)
         return str(combined_result)
 
@@ -508,7 +511,7 @@ class SplitStep(Step):
 
     def _distribute_items(self, items: list[str], num_agents: int) ->list[str]:
         """Distribute items among agents as evenly as possible."""
-        subtasks = [[] for _ in range(num_agents)]
+        subtasks: list[list[str]] = [[] for _ in range(num_agents)]
         for i, item in enumerate(items):
             subtasks[i % num_agents].append(item)
         result = []
@@ -538,7 +541,10 @@ class SplitStep(Step):
     def _split_task_with_context(self, task: str, num_agents: int, context:
         Context) ->list[str]:
         """Split task using context information for better distribution."""
-        project_structure = context.get('project_structure', {})
+        project_structure_value = context.get('project_structure', {})
+        if not isinstance(project_structure_value, dict):
+            return self._default_split(task, num_agents)
+        project_structure = project_structure_value
         if project_structure and len(project_structure) >= num_agents:
             subtasks = []
             components = list(project_structure.keys())[:num_agents]

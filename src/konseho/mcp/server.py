@@ -5,7 +5,7 @@ import logging
 import os
 import subprocess
 from collections.abc import Callable
-from typing import Protocol
+from typing import Protocol, Any
 
 
 class ToolFunction(Protocol):
@@ -13,21 +13,20 @@ class ToolFunction(Protocol):
     def __call__(self, *args: object, **kwargs: object) -> object:
         ...
 from dataclasses import dataclass
-from typing import Any
 from konseho.mcp.config import MCPConfigManager, MCPServerConfig
 from konseho.tools.mcp_adapter import MCPToolAdapter
 logger = logging.getLogger(__name__)
 
 
-@dataclass
+@dataclass  # type: ignore[misc]
 class MCPServerInstance:
     """Running MCP server instance."""
     name: str
     config: MCPServerConfig
-    process: subprocess.Popen | None = None
-    tools: dict[str, Callable] = None
+    process: subprocess.Popen[Any] | None = None
+    tools: dict[str, Callable[..., Any]] | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.tools is None:
             self.tools = {}
 
@@ -80,7 +79,7 @@ class MCPServerManager:
             self.servers[name] = instance
             await self._discover_tools(instance)
             logger.info(
-                f'Started MCP server {name} with {len(instance.tools)} tools')
+                f'Started MCP server {name} with {len(instance.tools) if instance.tools else 0} tools')
             return True
         except Exception as e:
             logger.error(f'Failed to start MCP server {name}: {e}')
@@ -123,7 +122,7 @@ class MCPServerManager:
         for name in server_names:
             await self.stop_server(name)
 
-    def get_tool(self, tool_name: str) ->(Callable | None):
+    def get_tool(self, tool_name: str) ->(Callable[..., Any] | None):
         """Get a specific tool by name.
 
         Args:
@@ -137,9 +136,12 @@ class MCPServerManager:
             return None
         if server_name not in self.servers:
             return None
-        return self.servers[server_name].tools.get(tool_name)
+        tools = self.servers[server_name].tools
+        if tools is None:
+            return None
+        return tools.get(tool_name)
 
-    def get_tools_for_server(self, server_name: str) ->dict[str, Callable]:
+    def get_tools_for_server(self, server_name: str) ->dict[str, Callable[..., Any]]:
         """Get all tools from a specific server.
 
         Args:
@@ -150,20 +152,24 @@ class MCPServerManager:
         """
         if server_name not in self.servers:
             return {}
-        return self.servers[server_name].tools.copy()
+        tools = self.servers[server_name].tools
+        if tools is None:
+            return {}
+        return tools.copy()
 
-    def get_all_tools(self) ->dict[str, Callable]:
+    def get_all_tools(self) ->dict[str, Callable[..., Any]]:
         """Get all available tools from all running servers.
 
         Returns:
             Dictionary of tool_name -> tool_function
         """
-        all_tools = {}
+        all_tools: dict[str, Callable[..., Any]] = {}
         for server in self.servers.values():
-            all_tools.update(server.tools)
+            if server.tools is not None:
+                all_tools.update(server.tools)
         return all_tools
 
-    def list_tools(self) ->list[dict[str, str]]:
+    def list_tools(self) ->list[dict[str, str | bool]]:
         """List all available tools with metadata.
 
         Returns:
@@ -171,14 +177,15 @@ class MCPServerManager:
         """
         tools = []
         for server_name, server in self.servers.items():
-            for tool_name, tool_func in server.tools.items():
-                tools.append({'name': tool_name, 'server': server_name,
-                    'description': getattr(tool_func, '__doc__', '').strip(
-                    ).split('\n')[0] if hasattr(tool_func, '__doc__') else
-                    '', 'enabled': server.config.enabled})
+            if server.tools is not None:
+                for tool_name, tool_func in server.tools.items():
+                    tools.append({'name': tool_name, 'server': server_name,
+                        'description': getattr(tool_func, '__doc__', '').strip(
+                        ).split('\n')[0] if hasattr(tool_func, '__doc__') else
+                        '', 'enabled': server.config.enabled})
         return tools
 
-    async def _discover_tools(self, instance: MCPServerInstance):
+    async def _discover_tools(self, instance: MCPServerInstance) -> None:
         """Discover tools from an MCP server.
 
         This is a simplified version. In practice, this would:
@@ -189,10 +196,11 @@ class MCPServerManager:
         mock_tools = self._get_mock_tools(instance.name)
         for tool_name, tool_func in mock_tools.items():
             wrapped_tool = MCPToolAdapter(tool_func, tool_name)
-            instance.tools[tool_name] = wrapped_tool
+            if instance.tools is not None:
+                instance.tools[tool_name] = wrapped_tool
             self._tool_registry[tool_name] = instance.name
 
-    def _get_mock_tools(self, server_name: str) ->dict[str, Callable]:
+    def _get_mock_tools(self, server_name: str) ->dict[str, Callable[..., Any]]:
         """Get mock tools for demonstration.
 
         In practice, these would be discovered from the MCP server.
@@ -244,9 +252,15 @@ class MCPToolSelector:
         """
         if preset:
             if preset_config := self._get_preset_config(preset):
-                tool_names = preset_config.get('tools', tool_names)
-                servers = preset_config.get('servers', servers)
-                tags = preset_config.get('tags', tags)
+                preset_tools = preset_config.get('tools')
+                if isinstance(preset_tools, list):
+                    tool_names = preset_tools
+                preset_servers = preset_config.get('servers')
+                if isinstance(preset_servers, list):
+                    servers = preset_servers
+                preset_tags = preset_config.get('tags')
+                if isinstance(preset_tags, list):
+                    tags = preset_tags
         selected_tools = []
         all_tools = self.server_manager.get_all_tools()
         for tool_name, tool_func in all_tools.items():
@@ -264,7 +278,7 @@ class MCPToolSelector:
             selected_tools.append(tool_func)
         return selected_tools
 
-    def _get_preset_config(self, preset: str) ->(dict[str, Any] | None):
+    def _get_preset_config(self, preset: str) ->(dict[str, object] | None):
         """Get preset configuration.
 
         Args:
@@ -281,9 +295,10 @@ class MCPToolSelector:
             'calculate'], 'tags': ['data', 'analysis', 'file']},
             'communicator': {'tools': ['send_message', 'send_email',
             'notify'], 'tags': ['messaging', 'communication']}}
-        return presets.get(preset)
+        preset_config = presets.get(preset)
+        return preset_config if preset_config else None
 
-    def create_tool_preset(self, name: str, **selection_kwargs) ->'ToolPreset':
+    def create_tool_preset(self, name: str, **selection_kwargs: object) ->'ToolPreset':
         """Create a reusable tool selection preset.
 
         Args:
@@ -293,7 +308,46 @@ class MCPToolSelector:
         Returns:
             ToolPreset instance
         """
-        return ToolPreset(name, self, **selection_kwargs)
+        # Extract specific kwargs
+        tool_names = selection_kwargs.get('tool_names')
+        if isinstance(tool_names, list):
+            tool_names_list: list[str] | None = tool_names
+        else:
+            tool_names_list = None
+            
+        servers = selection_kwargs.get('servers')
+        if isinstance(servers, list):
+            servers_list: list[str] | None = servers
+        else:
+            servers_list = None
+            
+        tags = selection_kwargs.get('tags')
+        if isinstance(tags, list):
+            tags_list: list[str] | None = tags
+        else:
+            tags_list = None
+            
+        exclude_tools = selection_kwargs.get('exclude_tools')
+        if isinstance(exclude_tools, list):
+            exclude_tools_list: list[str] | None = exclude_tools
+        else:
+            exclude_tools_list = None
+            
+        exclude_servers = selection_kwargs.get('exclude_servers')
+        if isinstance(exclude_servers, list):
+            exclude_servers_list: list[str] | None = exclude_servers
+        else:
+            exclude_servers_list = None
+            
+        return ToolPreset(
+            name, 
+            self, 
+            tool_names=tool_names_list,
+            servers=servers_list,
+            tags=tags_list,
+            exclude_tools=exclude_tools_list,
+            exclude_servers=exclude_servers_list
+        )
 
 
 @dataclass
@@ -307,7 +361,7 @@ class ToolPreset:
     exclude_tools: list[str] | None = None
     exclude_servers: list[str] | None = None
 
-    def get_tools(self) ->list[Callable]:
+    def get_tools(self) ->list[Callable[..., Any]]:
         """Get tools based on this preset."""
         return self.selector.select_tools(tool_names=self.tool_names,
             servers=self.servers, tags=self.tags, exclude_tools=self.
