@@ -60,12 +60,12 @@ class TestCommonWorkflows:
         result = await council.execute("Research topic Z")
         
         # Verify all phases executed
-        assert "step_0" in result["results"]  # Research
-        assert "step_1" in result["results"]  # Synthesis
-        assert "step_2" in result["results"]  # Review
+        assert len(result["results"]) > 0  # Research
+        assert len(result["results"]) > 1  # Synthesis
+        assert len(result["results"]) > 2  # Review
         
         # Verify data flow - results are now StepResult objects
-        step0_result = result["results"]["step_0"]
+        step0_result = result["results"][0]
         research_results = step0_result.metadata["parallel_results"]
         assert "Found data about X" in research_results["researcher1"]
         assert "Found data about Y" in research_results["researcher2"]
@@ -104,14 +104,14 @@ class TestCommonWorkflows:
         
         result = await council.execute("Review code.py")
         
-        step0_result = result["results"]["step_0"]
+        step0_result = result["results"][0]
         analysis = step0_result.metadata["parallel_results"]
         assert len(analysis) == 3
         assert "vulnerabilities" in analysis["security"]
         assert "optimize" in analysis["performance"]
         assert "docstrings" in analysis["style"]
         
-        step1_result = result["results"]["step_1"]
+        step1_result = result["results"][1]
         fix_result = step1_result.metadata["parallel_results"]["fixer"]
         assert "optimized loop" in fix_result
         assert "added docstrings" in fix_result
@@ -166,15 +166,15 @@ class TestCommonWorkflows:
         result = await council.execute("How to improve user engagement?")
         
         # Check all phases - results are now StepResult objects
-        step0_result = result["results"]["step_0"]
+        step0_result = result["results"][0]
         brainstorm = step0_result.metadata["parallel_results"]
         assert len(brainstorm) == 3
         
-        step1_result = result["results"]["step_1"]
+        step1_result = result["results"][1]
         refined = step1_result.metadata["parallel_results"]
         assert "Refined idea" in refined["refiner1"]
         
-        step2_result = result["results"]["step_2"]
+        step2_result = result["results"][2]
         assert "moderator" in step2_result.metadata["strategy"]
         # The output is the winning agent's response, not the moderator's
         assert "Vote for refined idea" in step2_result.output
@@ -211,11 +211,11 @@ class TestCommonWorkflows:
         result = await council.execute("Design new feature")
         
         # Verify human input was incorporated - results are StepResult objects
-        step1_result = result["results"]["step_1"]
+        step1_result = result["results"][1]
         human_feedback = step1_result.metadata["parallel_results"]["reviewer"]
         assert "Approve solution A" in human_feedback
         
-        step2_result = result["results"]["step_2"]
+        step2_result = result["results"][2]
         implementation = step2_result.metadata["parallel_results"]["implementer"]
         assert "modifications" in implementation
     
@@ -249,7 +249,7 @@ class TestCommonWorkflows:
         result = await council.execute(complex_task)
         
         # Should have scaled up workers - results are StepResult objects
-        step1_result = result["results"]["step_1"]
+        step1_result = result["results"][1]
         split_results = step1_result.metadata["split_results"]
         assert len(split_results) > 2  # More than minimum
         assert all("Processed chunk" in r for r in split_results)
@@ -293,16 +293,16 @@ class TestCommonWorkflows:
         result = await council.execute("Write blog post")
         
         # Verify iterative process - results are StepResult objects
-        step0_result = result["results"]["step_0"]
+        step0_result = result["results"][0]
         draft = step0_result.metadata["parallel_results"]["drafter"]
         
-        step1_result = result["results"]["step_1"]
+        step1_result = result["results"][1]
         critique = step1_result.metadata["parallel_results"]["critic"]
         
-        step2_result = result["results"]["step_2"]
+        step2_result = result["results"][2]
         revision = step2_result.metadata["parallel_results"]["reviser"]
         
-        step3_result = result["results"]["step_3"]
+        step3_result = result["results"][3]
         approval = step3_result.metadata["parallel_results"]["approver"]
         
         assert "v1" in draft
@@ -348,12 +348,12 @@ class TestCommonWorkflows:
         result = await council.execute("Choose between option A and B")
         
         # Verify all opinions gathered - results are StepResult objects
-        step0_result = result["results"]["step_0"]
+        step0_result = result["results"][0]
         opinions_result = step0_result.metadata["parallel_results"]
         assert len(opinions_result) == 4
         
         # Verify consensus reached
-        step1_result = result["results"]["step_1"]
+        step1_result = result["results"][1]
         consensus = step1_result.metadata["parallel_results"]["facilitator"]
         assert "Consensus" in consensus
         assert "Majority" in consensus

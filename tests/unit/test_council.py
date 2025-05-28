@@ -4,7 +4,7 @@
 import pytest
 
 from konseho import AgentWrapper, Context, Council, DebateStep, ParallelStep
-from konseho.core.steps import Step
+from konseho.core.steps import Step, StepResult
 from konseho.factories import CouncilFactory, CouncilDependencies
 from tests.fixtures import EventCollector, MockStrandsAgent
 
@@ -192,5 +192,6 @@ class TestCouncil:
         
         # Check context accumulated both step results
         context_results = council.context.get_results()
-        assert "step_0" in context_results
-        assert "step_1" in context_results
+        assert len(context_results) == 2
+        assert isinstance(context_results[0], StepResult)
+        assert isinstance(context_results[1], StepResult)

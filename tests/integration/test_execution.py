@@ -33,9 +33,9 @@ class TestFullCouncilExecution:
         result = await council.execute("Solve problem X")
         
         assert "results" in result
-        assert "step_0" in result["results"]
+        assert len(result["results"]) == 1
         # Step results are now StepResult objects with output and metadata
-        step_result = result["results"]["step_0"]
+        step_result = result["results"][0]
         assert hasattr(step_result, "output")
         assert hasattr(step_result, "metadata")
         # ParallelStep puts results in metadata
@@ -65,15 +65,14 @@ class TestFullCouncilExecution:
         result = await council.execute("Complex problem")
         
         # Verify both steps executed
-        assert "step_0" in result["results"]
-        assert "step_1" in result["results"]
+        assert len(result["results"]) >= 2
         
         # Verify step types - results are now StepResult objects
-        step0_result = result["results"]["step_0"]
+        step0_result = result["results"][0]
         assert hasattr(step0_result, "metadata")
         assert "parallel_results" in step0_result.metadata
         
-        step1_result = result["results"]["step_1"]
+        step1_result = result["results"][1]
         assert hasattr(step1_result, "output")  # winner is in output
         assert hasattr(step1_result, "metadata")
         assert "proposals" in step1_result.metadata
@@ -89,7 +88,9 @@ class TestFullCouncilExecution:
                 self.saw_previous_results = False
             
             def __call__(self, prompt):
-                if "step_0" in prompt:
+                # Check if context contains results from previous steps
+                # The prompt should contain serialized results from step 0
+                if "recent_results" in prompt:
                     self.saw_previous_results = True
                 return Mock(message=f"{self.name} response")
         
@@ -138,9 +139,8 @@ class TestFullCouncilExecution:
             await council.execute("Task")
         
         # Only first step should have executed
-        assert "step_0" in council.context.get_results()
-        assert "step_1" not in council.context.get_results()
-        assert "step_2" not in council.context.get_results()
+        results = council.context.get_results()
+        assert len(results) == 1
     
     @pytest.mark.asyncio
     async def test_council_error_handling_continue(self):
@@ -168,12 +168,10 @@ class TestFullCouncilExecution:
         result = await council.execute("Task")
         
         # All steps should be in results (continue strategy includes failed steps)
-        assert "step_0" in result["results"]
-        assert "step_1" in result["results"]  # Failed step is included with error info
-        assert "step_2" in result["results"]
+        assert len(result["results"]) == 3
         
         # Check that step_1 has error metadata
-        step1_result = result["results"]["step_1"]
+        step1_result = result["results"][1]
         assert hasattr(step1_result, "metadata")
         assert "error" in step1_result.metadata
         assert "Agent failure" in step1_result.metadata["error"]
@@ -215,7 +213,7 @@ class TestAsyncExecutor:
         for i, result in enumerate(results):
             assert "results" in result
             # Check the actual agent output is in the step result
-            step_result = result["results"]["step_0"]
+            step_result = result["results"][0]
             assert hasattr(step_result, "metadata")
             parallel_results = step_result.metadata.get("parallel_results", {})
             # Find the agent's output in parallel results

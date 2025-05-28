@@ -7,7 +7,7 @@ def test_context_initialization():
     """Test context can be initialized with and without data."""
     # Empty context
     ctx = Context()
-    assert ctx.get_results() == {}
+    assert ctx.get_results() == []
     
     # Context with initial data
     ctx = Context({"key": "value"})
@@ -25,19 +25,20 @@ def test_context_add_and_get():
 def test_context_results():
     """Test storing and retrieving step results."""
     ctx = Context()
-    ctx.add_result("step_1", {"output": "result1"})
-    ctx.add_result("step_2", {"output": "result2"})
+    ctx.add_result({"output": "result1"})
+    ctx.add_result({"output": "result2"})
     
     results = ctx.get_results()
     assert len(results) == 2
-    assert results["step_1"]["output"] == "result1"
+    assert results[0]["output"] == "result1"
+    assert results[1]["output"] == "result2"
 
 
 def test_context_to_prompt():
     """Test context conversion to prompt string."""
     ctx = Context()
     ctx.add("task", "Test task")
-    ctx.add_result("step_1", "First result")
+    ctx.add_result("First result")
     
     prompt = ctx.to_prompt_context()
     assert "Current Context:" in prompt

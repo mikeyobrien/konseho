@@ -12,7 +12,7 @@ class Context:
         """Initialize context with optional initial data."""
         self._data: dict[str, Any] = initial_data or {}
         self._history: list[dict[str, Any]] = []
-        self._results: dict[str, Any] = {}
+        self._results: list[Any] = []  # Changed from dict to list
         self._metadata: dict[str, Any] = {
             "created_at": datetime.now().isoformat(),
             "version": "1.0.0"
@@ -32,18 +32,24 @@ class Context:
         """Get a value from the context."""
         return self._data.get(key, default)
     
-    def add_result(self, step_name: str, result: Any) -> None:
+    @property
+    def results(self) -> list[Any]:
+        """Get the results list (read-only property)."""
+        return self._results
+    
+    def add_result(self, result: Any) -> None:
         """Store a result from a step execution."""
-        self._results[step_name] = result
+        self._results.append(result)
         self._history.append({
             "action": "result",
-            "step": step_name,
+            "step_index": len(self._results) - 1,
             "timestamp": datetime.now().isoformat()
         })
     
-    def get_results(self) -> dict[str, Any]:
+    def get_results(self) -> list[Any]:
         """Get all stored results."""
-        return self._results.copy()
+        import copy
+        return copy.deepcopy(self._results)
     
     def get_summary(self) -> dict[str, Any]:
         """Get a summary of the context state."""
@@ -58,7 +64,7 @@ class Context:
         """Convert context to a string suitable for LLM prompts."""
         summary = {
             "current_data": self._serialize_data(self._data),
-            "recent_results": self._serialize_data(dict(list(self._results.items())[-3:]))  # Last 3 results
+            "recent_results": self._serialize_data(self._results[-3:])  # Last 3 results
         }
         
         context_str = json.dumps(summary, indent=2)
@@ -119,3 +125,4 @@ class Context:
         total_size += sys.getsizeof(self._history)
         total_size += sys.getsizeof(self._metadata)
         return total_size
+    

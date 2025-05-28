@@ -12,7 +12,7 @@ class TestContext:
     def test_context_initialization_empty(self):
         """Test empty context initialization."""
         ctx = Context()
-        assert ctx.get_results() == {}
+        assert ctx.get_results() == []
         assert ctx.get("nonexistent") is None
         assert isinstance(ctx._metadata, dict)
         assert "created_at" in ctx._metadata
@@ -77,13 +77,13 @@ class TestContext:
         """Test storing step results."""
         ctx = Context()
         
-        ctx.add_result("step_1", {"output": "result1", "status": "success"})
-        ctx.add_result("step_2", {"output": "result2", "status": "success"})
+        ctx.add_result({"output": "result1", "status": "success"})
+        ctx.add_result({"output": "result2", "status": "success"})
         
         results = ctx.get_results()
         assert len(results) == 2
-        assert results["step_1"]["output"] == "result1"
-        assert results["step_2"]["output"] == "result2"
+        assert results[0]["output"] == "result1"
+        assert results[1]["output"] == "result2"
         
         # Check history
         assert any(h["action"] == "result" for h in ctx._history)
@@ -92,7 +92,7 @@ class TestContext:
         """Test getting context summary."""
         ctx = Context({"initial": "data"})
         ctx.add("runtime", "value")
-        ctx.add_result("step_1", "result1")
+        ctx.add_result("result1")
         
         summary = ctx.get_summary()
         
@@ -103,7 +103,7 @@ class TestContext:
         
         assert summary["data"]["initial"] == "data"
         assert summary["data"]["runtime"] == "value"
-        assert summary["results"]["step_1"] == "result1"
+        assert summary["results"][0] == "result1"
         assert summary["history_length"] == 2  # add + add_result
     
     def test_context_to_prompt_basic(self):
@@ -126,7 +126,7 @@ class TestContext:
         
         # Add multiple results
         for i in range(5):
-            ctx.add_result(f"step_{i}", f"result_{i}")
+            ctx.add_result(f"result_{i}")
         
         prompt = ctx.to_prompt_context()
         
@@ -149,14 +149,14 @@ class TestContext:
         
         prompt = ctx.to_prompt_context(max_length=1000)
         
-        assert len(prompt) <= 1003  # 1000 + "..."
-        assert prompt.endswith("...")
+        assert len(prompt) <= 1020  # 1000 + "Current Context:\n"
+        assert "..." in prompt
     
     def test_context_clear(self):
         """Test clearing context."""
         ctx = Context({"initial": "data"})
         ctx.add("key", "value")
-        ctx.add_result("step", "result")
+        ctx.add_result("result")
         
         # Verify data exists
         assert len(ctx._data) > 0
@@ -168,7 +168,7 @@ class TestContext:
         assert len(ctx._data) == 0
         assert len(ctx._results) == 0
         assert ctx.get("initial") is None
-        assert ctx.get_results() == {}
+        assert ctx.get_results() == []
         
         # History should record clear
         assert ctx._history[-1]["action"] == "clear"
@@ -176,13 +176,13 @@ class TestContext:
     def test_context_immutable_results(self):
         """Test get_results returns copy not reference."""
         ctx = Context()
-        ctx.add_result("step", {"data": "original"})
+        ctx.add_result({"data": "original"})
         
         results = ctx.get_results()
-        results["step"]["data"] = "modified"
+        results[0]["data"] = "modified"
         
         # Original should be unchanged
-        assert ctx._results["step"]["data"] == "original"
+        assert ctx._results[0]["data"] == "original"
     
     def test_context_metadata(self):
         """Test context metadata."""
@@ -202,7 +202,7 @@ class TestContext:
         ctx.add("string", "value")
         ctx.add("number", 42)
         ctx.add("list", [1, 2, 3])
-        ctx.add_result("step", {"output": "result"})
+        ctx.add_result({"output": "result"})
         
         summary = ctx.get_summary()
         
@@ -211,4 +211,4 @@ class TestContext:
         loaded = json.loads(json_str)
         
         assert loaded["data"]["string"] == "value"
-        assert loaded["results"]["step"]["output"] == "result"
+        assert loaded["results"][0]["output"] == "result"

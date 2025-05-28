@@ -71,7 +71,7 @@ class StepOrchestrator:
             results.append(result)
             
             # Update context with result
-            context.add_result(f"step_{i}", result)
+            context.add_result(result)
             
             if self.event_emitter:
                 self.event_emitter.emit("step_completed", {
