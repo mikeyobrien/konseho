@@ -208,7 +208,9 @@ class MockAgent(IAgent):
 class MockStep(IStep):
     """Mock step for testing purposes."""
 
-    def __init__(self, name: str, output: str = "Mock output", should_fail: bool = False):
+    def __init__(
+        self, name: str, output: str = "Mock output", should_fail: bool = False
+    ):
         """Initialize mock step.
 
         Args:

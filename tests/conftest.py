@@ -1,4 +1,5 @@
 """Pytest configuration for Konseho tests."""
+
 import asyncio
 from collections.abc import Generator
 

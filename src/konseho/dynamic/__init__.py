@@ -12,7 +12,7 @@ from .step_planner import StepPlanner
 __all__ = [
     # Original components
     "QueryAnalyzer",
-    "TaskType", 
+    "TaskType",
     "DynamicAgentFactory",
     "StepPlanner",
     "DynamicCouncilBuilder",

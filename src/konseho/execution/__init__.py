@@ -5,9 +5,9 @@ from .executor import AsyncExecutor, DecisionProtocol, StepExecutor
 
 __all__ = [
     "StepExecutor",
-    "AsyncExecutor", 
+    "AsyncExecutor",
     "DecisionProtocol",
     "EventType",
     "CouncilEvent",
-    "EventEmitter"
+    "EventEmitter",
 ]

@@ -4,8 +4,7 @@ import logging
 
 # Configure logging
 logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    level=logging.INFO
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
 
 # Core exports
@@ -32,7 +31,7 @@ __version__ = "0.1.0"
 __all__ = [
     # Core
     "Council",
-    "Context", 
+    "Context",
     "Step",
     "DebateStep",
     "ParallelStep",

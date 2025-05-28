@@ -7,6 +7,7 @@ from typing import Any
 # Try to load environment variables from .env file
 try:
     from dotenv import load_dotenv
+
     load_dotenv()
 except ImportError:
     # dotenv not installed, rely on system environment variables
@@ -16,6 +17,7 @@ except ImportError:
 @dataclass
 class ModelConfig:
     """Configuration for a model provider."""
+
     provider: str
     model_id: str
     api_key: str | None = None
@@ -24,12 +26,12 @@ class ModelConfig:
 
 def get_model_config() -> ModelConfig:
     """Get model configuration from environment variables.
-    
+
     Returns:
         ModelConfig object with provider settings
     """
     provider = os.getenv("DEFAULT_PROVIDER", "bedrock").lower()
-    
+
     if provider == "openai":
         return ModelConfig(
             provider="openai",
@@ -37,10 +39,10 @@ def get_model_config() -> ModelConfig:
             api_key=os.getenv("OPENAI_API_KEY"),
             additional_args={
                 "temperature": float(os.getenv("TEMPERATURE", "0.7")),
-                "max_tokens": int(os.getenv("MAX_TOKENS", "2000"))
-            }
+                "max_tokens": int(os.getenv("MAX_TOKENS", "2000")),
+            },
         )
-    
+
     elif provider == "anthropic":
         return ModelConfig(
             provider="anthropic",
@@ -48,92 +50,99 @@ def get_model_config() -> ModelConfig:
             api_key=os.getenv("ANTHROPIC_API_KEY"),
             additional_args={
                 "temperature": float(os.getenv("TEMPERATURE", "0.7")),
-                "max_tokens": int(os.getenv("MAX_TOKENS", "2000"))
-            }
+                "max_tokens": int(os.getenv("MAX_TOKENS", "2000")),
+            },
         )
-    
+
     elif provider == "bedrock":
         # AWS Bedrock (default)
         return ModelConfig(
             provider="bedrock",
-            model_id=os.getenv("DEFAULT_MODEL", "anthropic.claude-3-sonnet-20240229-v1:0"),
+            model_id=os.getenv(
+                "DEFAULT_MODEL", "anthropic.claude-3-sonnet-20240229-v1:0"
+            ),
             additional_args={
                 "region_name": os.getenv("AWS_DEFAULT_REGION", "us-east-1")
-            }
+            },
         )
-    
+
     elif provider == "ollama":
         return ModelConfig(
             provider="ollama",
             model_id=os.getenv("DEFAULT_MODEL", "llama2"),
             additional_args={
                 "host": os.getenv("OLLAMA_HOST", "http://localhost:11434")
-            }
+            },
         )
-    
+
     else:
         # Default to Bedrock
         return ModelConfig(
-            provider="bedrock",
-            model_id="anthropic.claude-3-sonnet-20240229-v1:0"
+            provider="bedrock", model_id="anthropic.claude-3-sonnet-20240229-v1:0"
         )
 
 
 def create_model_from_config(config: ModelConfig | None = None):
     """Create a Strands model instance from configuration.
-    
+
     Args:
         config: Optional ModelConfig, uses environment if not provided
-        
+
     Returns:
         Configured model instance for use with Strands agents
     """
     if config is None:
         config = get_model_config()
-    
+
     try:
         if config.provider == "openai":
             from strands.models.openai import OpenAIModel
+
             return OpenAIModel(
                 client_args={"api_key": config.api_key},
                 model_id=config.model_id,
-                **config.additional_args or {}
+                **config.additional_args or {},
             )
-        
+
         elif config.provider == "anthropic":
             from strands.models.anthropic import AnthropicModel
+
             # Extract max_tokens from additional_args
             additional_args = config.additional_args or {}
             max_tokens = additional_args.get("max_tokens", 2000)
             temperature = additional_args.get("temperature", 0.7)
-            
+
             model = AnthropicModel(
-                client_args={"api_key": config.api_key},
-                model_id=config.model_id
+                client_args={"api_key": config.api_key}, model_id=config.model_id
             )
             # Set config after initialization
             model.config = {
                 "max_tokens": max_tokens,
                 "model_id": config.model_id,
-                "temperature": temperature
+                "temperature": temperature,
             }
             return model
-        
+
         elif config.provider == "ollama":
             from strands.models.ollama import OllamaModel
+
             return OllamaModel(
                 model_id=config.model_id,
-                host=config.additional_args.get("host") if config.additional_args else None
+                host=(
+                    config.additional_args.get("host")
+                    if config.additional_args
+                    else None
+                ),
             )
-        
+
         elif config.provider == "bedrock":
             # Bedrock uses default AWS credentials or environment vars
             # Model ID format: anthropic.claude-3-sonnet-20240229-v1:0
             return config.model_id  # Bedrock uses string model IDs
-        
+
         else:
             raise ValueError(f"Unknown provider: {config.provider}")
-            
+
     except ImportError as e:
         raise ImportError(
             f"Provider '{config.provider}' not installed. "

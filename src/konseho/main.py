@@ -19,7 +19,8 @@ logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 def print_usage():
     """Print usage information."""
-    print("""
+    print(
+        """
 🏛️  Konseho - Multi-Agent Council Framework
 
 Usage:
@@ -60,61 +61,54 @@ For custom councils, create a Python script:
     ])
     
     result = council.run("Your task here")
-""")
+"""
+    )
 
 
 def create_example_council() -> Council:
     """Create an example council with mock agents."""
     # Import here to avoid circular imports
     from .agents.base import create_agent
-    from .personas import CODER_PROMPT, EXPLORER_PROMPT, PLANNER_PROMPT
     from .factories import CouncilFactory
-    
+    from .personas import CODER_PROMPT, EXPLORER_PROMPT, PLANNER_PROMPT
+
     # Create agents with distinct personas
     explorer = AgentWrapper(
-        create_agent(
-            name="Explorer",
-            system_prompt=EXPLORER_PROMPT,
-            temperature=0.8
-        ), 
-        name="Explorer"
+        create_agent(name="Explorer", system_prompt=EXPLORER_PROMPT, temperature=0.8),
+        name="Explorer",
     )
-    
+
     planner = AgentWrapper(
-        create_agent(
-            name="Planner",
-            system_prompt=PLANNER_PROMPT,
-            temperature=0.7
-        ), 
-        name="Planner"
-    )  
-    
-    coder = AgentWrapper(
-        create_agent(
-            name="Coder",
-            system_prompt=CODER_PROMPT,
-            temperature=0.6
-        ), 
-        name="Coder"
+        create_agent(name="Planner", system_prompt=PLANNER_PROMPT, temperature=0.7),
+        name="Planner",
     )
-    
+
+    coder = AgentWrapper(
+        create_agent(name="Coder", system_prompt=CODER_PROMPT, temperature=0.6),
+        name="Coder",
+    )
+
     # Use factory to create council
     factory = CouncilFactory()
     return factory.create_council(
         name="ExampleCouncil",
         steps=[
             DebateStep(
-                agents=[explorer, planner, coder],
-                rounds=1,
-                voting_strategy="majority"
+                agents=[explorer, planner, coder], rounds=1, voting_strategy="majority"
             )
-        ]
+        ],
     )
 
 
-async def run_interactive_chat(council: Council | None = None, dynamic_mode: bool = False, analyzer_model: str | None = None, save_outputs: bool = False, output_dir: str | None = None):
+async def run_interactive_chat(
+    council: Council | None = None,
+    dynamic_mode: bool = False,
+    analyzer_model: str | None = None,
+    save_outputs: bool = False,
+    output_dir: str | None = None,
+):
     """Run the interactive chat interface.
-    
+
     Args:
         council: Pre-built council to use (if not dynamic mode)
         dynamic_mode: Whether to use dynamic council creation
@@ -122,64 +116,92 @@ async def run_interactive_chat(council: Council | None = None, dynamic_mode: boo
     """
     if council is None and not dynamic_mode:
         council = create_example_council()
-    
-    chat = ChatInterface(use_rich=True, save_outputs=save_outputs, output_dir=output_dir)
-    
+
+    chat = ChatInterface(
+        use_rich=True, save_outputs=save_outputs, output_dir=output_dir
+    )
+
     if dynamic_mode:
-        print("\n🧠 Dynamic Council Mode: I'll create specialized agents for each task.")
+        print(
+            "\n🧠 Dynamic Council Mode: I'll create specialized agents for each task."
+        )
         print("The council composition will be optimized based on your query.")
         if analyzer_model:
             print(f"Using analyzer model: {analyzer_model}")
     else:
         print("\n💡 Tip: The council will work together to solve your tasks.")
     print("Type 'quit' to exit.\n")
-    
+
     if dynamic_mode:
         # Create a custom chat session for dynamic mode
-        await run_dynamic_chat_session(chat, analyzer_model=analyzer_model, save_outputs=save_outputs, output_dir=output_dir)
+        await run_dynamic_chat_session(
+            chat,
+            analyzer_model=analyzer_model,
+            save_outputs=save_outputs,
+            output_dir=output_dir,
+        )
     else:
         await chat.interactive_session(council)
 
 
-async def run_dynamic_chat_session(chat: ChatInterface, analyzer_model: str | None = None, save_outputs: bool = False, output_dir: str | None = None):
+async def run_dynamic_chat_session(
+    chat: ChatInterface,
+    analyzer_model: str | None = None,
+    save_outputs: bool = False,
+    output_dir: str | None = None,
+):
     """Run chat session with dynamic council creation for each query.
-    
+
     Args:
         chat: Chat interface to use
         analyzer_model: Model to use for query analysis (defaults to config)
     """
     chat.display_welcome()
-    
+
     # Dynamic builder with optional analyzer model
     builder = DynamicCouncilBuilder(verbose=True, analyzer_model=analyzer_model)
-    
+
     while True:
         try:
             # Get user input
             if chat.use_rich:
-                task = chat.console.input("\n[bold cyan]Enter task (or 'quit' to exit):[/bold cyan] ")
+                task = chat.console.input(
+                    "\n[bold cyan]Enter task (or 'quit' to exit):[/bold cyan] "
+                )
             else:
                 task = input("\nEnter task (or 'quit' to exit): ")
-            
-            if task.lower() in ['quit', 'exit', 'q']:
+
+            if task.lower() in ["quit", "exit", "q"]:
                 break
-            
+
             # Create dynamic council for this query
             print("\n🔍 Analyzing your request...")
-            council = await builder.build(task, save_outputs=save_outputs, output_dir=output_dir)
-            
+            council = await builder.build(
+                task, save_outputs=save_outputs, output_dir=output_dir
+            )
+
             # Subscribe to council events
-            if hasattr(council, '_event_emitter'):
-                council._event_emitter.on("council:start", lambda e, d: chat.display_event(e, d))
-                council._event_emitter.on("step:start", lambda e, d: chat.display_event(e, d))
-                council._event_emitter.on("step:complete", lambda e, d: chat.display_event(e, d))
-                council._event_emitter.on("council:complete", lambda e, d: chat.display_event(e, d))
-                council._event_emitter.on("council:error", lambda e, d: chat.display_event(e, d))
-            
+            if hasattr(council, "_event_emitter"):
+                council._event_emitter.on(
+                    "council:start", lambda e, d: chat.display_event(e, d)
+                )
+                council._event_emitter.on(
+                    "step:start", lambda e, d: chat.display_event(e, d)
+                )
+                council._event_emitter.on(
+                    "step:complete", lambda e, d: chat.display_event(e, d)
+                )
+                council._event_emitter.on(
+                    "council:complete", lambda e, d: chat.display_event(e, d)
+                )
+                council._event_emitter.on(
+                    "council:error", lambda e, d: chat.display_event(e, d)
+                )
+
             # Execute council
             result = await council.execute(task)
             chat.display_result(result)
-            
+
         except KeyboardInterrupt:
             break
         except Exception as e:
@@ -187,16 +209,24 @@ async def run_dynamic_chat_session(chat: ChatInterface, analyzer_model: str | No
                 chat.console.print(f"[bold red]Error:[/bold red] {e}")
             else:
                 print(f"Error: {e}")
-    
+
     if chat.use_rich:
         chat.console.print("\n[dim]Goodbye![/dim]")
     else:
         print("\nGoodbye!")
 
 
-async def run_single_query(prompt: str, council: Council | None = None, dynamic_mode: bool = False, quiet: bool = False, analyzer_model: str | None = None, save_outputs: bool = False, output_dir: str | None = None):
+async def run_single_query(
+    prompt: str,
+    council: Council | None = None,
+    dynamic_mode: bool = False,
+    quiet: bool = False,
+    analyzer_model: str | None = None,
+    save_outputs: bool = False,
+    output_dir: str | None = None,
+):
     """Run a single query and exit.
-    
+
     Args:
         prompt: The query to run
         council: Pre-built council to use (if not dynamic mode)
@@ -204,69 +234,81 @@ async def run_single_query(prompt: str, council: Council | None = None, dynamic_
         quiet: Whether to suppress verbose output
         analyzer_model: Model to use for query analysis in dynamic mode
     """
-    
+
     try:
         if dynamic_mode:
             # Create dynamic council for this query
             print("\n🔍 Analyzing your request...")
-            builder = DynamicCouncilBuilder(verbose=False, analyzer_model=analyzer_model)  # Less verbose for single query
-            council = await builder.build(prompt, save_outputs=save_outputs, output_dir=output_dir)
-        
+            builder = DynamicCouncilBuilder(
+                verbose=False, analyzer_model=analyzer_model
+            )  # Less verbose for single query
+            council = await builder.build(
+                prompt, save_outputs=save_outputs, output_dir=output_dir
+            )
+
         # For single query mode, we want minimal output
         # Only subscribe to key events
-        if hasattr(council, '_event_emitter'):
+        if hasattr(council, "_event_emitter"):
             # Track progress without showing all details
             def show_progress(event: str, data: dict):
                 if event == "council:start":
                     print(f"\n▶ Starting {data.get('council_name', 'Council')}")
                 elif event == "step:start":
-                    step_type = data.get('step_type', 'Step')
+                    step_type = data.get("step_type", "Step")
                     print(f"→ Executing {step_type}...")
                 elif event == "council:error":
                     print(f"❌ Error: {data.get('error', 'Unknown error')}")
-            
+
             council._event_emitter.on("council:start", show_progress)
             council._event_emitter.on("step:start", show_progress)
             council._event_emitter.on("council:error", show_progress)
-        
+
         # Execute council
         print(f"\n📋 Task: {prompt}")
         result = await council.execute(prompt)
-        
+
         # Display final result
         print("\n" + "=" * 50)
         print("📊 Final Result:")
         print("=" * 50)
-        
+
         # Extract the winner from the last step result
         final_answer = None
         if isinstance(result, dict) and "results" in result:
             step_results = result["results"]
             # Get the last step's result
-            last_step_key = sorted([k for k in step_results.keys() if k.startswith("step_")])[-1] if step_results else None
+            last_step_key = (
+                sorted([k for k in step_results.keys() if k.startswith("step_")])[-1]
+                if step_results
+                else None
+            )
             if last_step_key:
                 step_result = step_results[last_step_key]
                 # Handle StepResult objects
-                if hasattr(step_result, 'output'):
+                if hasattr(step_result, "output"):
                     final_answer = step_result.output
                 # Handle legacy dict format
                 elif isinstance(step_result, dict) and "winner" in step_result:
                     final_answer = step_result["winner"]
-        
+
         if final_answer:
             # Truncate if too long
-            display_answer = final_answer[:1000] + "..." if len(final_answer) > 1000 else final_answer
+            display_answer = (
+                final_answer[:1000] + "..."
+                if len(final_answer) > 1000
+                else final_answer
+            )
             print(f"\n{display_answer}")
         else:
             print("\n[No final answer produced]")
-        
+
         # Show execution metadata
         if isinstance(result, dict) and "metadata" in result and result["metadata"]:
             print("\n📈 Summary:")
             for key, value in result["metadata"].items():
                 if value:
                     print(f"  • {key}: {value}")
-        
+
     except Exception as e:
         print(f"\n❌ Error: {e}")
         sys.exit(1)
@@ -275,24 +317,26 @@ async def run_single_query(prompt: str, council: Council | None = None, dynamic_
 def main():
     """Main CLI entry point."""
     args = sys.argv[1:]
-    
+
     if "--help" in args or "-h" in args:
         print_usage()
         return
-    
+
     if "--setup" in args:
         from .setup_wizard import run_setup_wizard
+
         run_setup_wizard()
         return
-    
+
     if "--config" in args:
         from .config import print_config_info
+
         print("\n📋 Current Model Configuration:")
         print("-" * 30)
         print_config_info()
         print("\nTo change configuration, edit your .env file.")
         return
-    
+
     # Parse prompt argument
     prompt = None
     if "-p" in args:
@@ -301,7 +345,7 @@ def main():
             prompt = args[prompt_index + 1]
         else:
             print("❌ Error: -p flag requires a prompt argument")
-            print("Usage: konseho -p \"your query\"")
+            print('Usage: konseho -p "your query"')
             return
     elif "--prompt" in args:
         prompt_index = args.index("--prompt")
@@ -309,12 +353,12 @@ def main():
             prompt = args[prompt_index + 1]
         else:
             print("❌ Error: --prompt flag requires a prompt argument")
-            print("Usage: konseho --prompt \"your query\"")
+            print('Usage: konseho --prompt "your query"')
             return
-    
+
     # Check for quiet mode (less verbose output)
     quiet_mode = "-q" in args or "--quiet" in args
-    
+
     # Check for output saving options
     save_outputs = "--save" in args or "-s" in args
     output_dir = None
@@ -325,15 +369,16 @@ def main():
         else:
             print("❌ Error: --output-dir requires a directory argument")
             return
-    
+
     # Validate prompt if provided
     if prompt is not None and not prompt.strip():
         print("❌ Error: Prompt cannot be empty")
-        print("Usage: konseho -p \"your query\"")
+        print('Usage: konseho -p "your query"')
         return
-    
+
     # Check environment setup first
     import os
+
     if not os.path.exists(".env"):
         print("\n🆕 First time using Konseho?")
         print("   Run setup wizard: python -m konseho --setup")
@@ -342,6 +387,7 @@ def main():
         # Check if model is configured
         try:
             from .config import get_model_config
+
             config = get_model_config()
             if config.provider in ["anthropic", "openai"] and not config.api_key:
                 print("\n⚠️  Warning: No API key found for", config.provider)
@@ -349,13 +395,13 @@ def main():
                 print("   Or edit .env to add your API key\n")
         except Exception:
             pass
-    
+
     # Handle council selection
     council_type = "balanced"  # default
     council = None
     dynamic_mode = False
     analyzer_model = None
-    
+
     # Check for analyzer model argument
     if "--analyzer-model" in args:
         model_index = args.index("--analyzer-model")
@@ -365,7 +411,7 @@ def main():
             print("❌ Error: --analyzer-model requires a model name argument")
             print("Usage: konseho --dynamic --analyzer-model claude-3-haiku-20240307")
             return
-    
+
     # Check for dynamic mode first
     if "--dynamic" in args:
         dynamic_mode = True
@@ -378,23 +424,41 @@ def main():
                 dynamic_mode = True
     elif "--example" in args:
         council_type = "example"
-    
+
     # Create the appropriate council
     if not prompt:
         # Interactive mode
         print("🏛️  Welcome to Konseho Interactive Council")
         print("=" * 50)
-    
+
     if dynamic_mode:
         if prompt:
             # Non-interactive dynamic mode
             print("🏛️  Konseho - Dynamic Council Mode")
             print("=" * 50)
-            asyncio.run(run_single_query(prompt, council=None, dynamic_mode=True, quiet=quiet_mode, analyzer_model=analyzer_model, save_outputs=save_outputs, output_dir=output_dir))
+            asyncio.run(
+                run_single_query(
+                    prompt,
+                    council=None,
+                    dynamic_mode=True,
+                    quiet=quiet_mode,
+                    analyzer_model=analyzer_model,
+                    save_outputs=save_outputs,
+                    output_dir=output_dir,
+                )
+            )
         else:
             print("Using dynamic council mode...")
             # Start the chat with dynamic mode
-            asyncio.run(run_interactive_chat(council=None, dynamic_mode=True, analyzer_model=analyzer_model, save_outputs=save_outputs, output_dir=output_dir))
+            asyncio.run(
+                run_interactive_chat(
+                    council=None,
+                    dynamic_mode=True,
+                    analyzer_model=analyzer_model,
+                    save_outputs=save_outputs,
+                    output_dir=output_dir,
+                )
+            )
     elif council_type == "example":
         council = create_example_council()
         # Set output saving if requested
@@ -412,6 +476,7 @@ def main():
     else:
         try:
             from .example_councils import COUNCILS
+
             if council_type in COUNCILS:
                 council = COUNCILS[council_type]()
                 if prompt:
@@ -424,7 +489,9 @@ def main():
                     asyncio.run(run_interactive_chat(council))
             else:
                 print(f"⚠️  Unknown council type: {council_type}")
-                print("Available councils: example, balanced, innovation, development, research, dynamic")
+                print(
+                    "Available councils: example, balanced, innovation, development, research, dynamic"
+                )
                 print("Falling back to balanced council...")
                 council = COUNCILS["balanced"]()
                 if prompt:
