@@ -455,16 +455,21 @@ class ParallelStep(Step):
     """Agents work on different aspects simultaneously."""
 
     def __init__(
-        self, agents: list[AgentWrapper], task_splitter: Callable | None = None
+        self,
+        agents: list[AgentWrapper],
+        task_splitter: Callable | None = None,
+        result_combiner: AgentWrapper | None = None,
     ):
         """Initialize parallel step.
 
         Args:
             agents: List of agents to work in parallel
             task_splitter: Optional function to split task into subtasks
+            result_combiner: Optional agent to synthesize parallel results
         """
         self.agents = agents
         self.task_splitter = task_splitter
+        self.result_combiner = result_combiner
 
     async def execute(self, task: str, context: Context) -> StepResult:
         """Execute agents in parallel."""
@@ -488,19 +493,49 @@ class ParallelStep(Step):
             for agent, result in zip(self.agents, results, strict=False)
         }
 
-        # Create a summary output
-        output_lines = ["Parallel execution results:"]
-        for agent_name, result in parallel_results.items():
-            output_lines.append(f"\n[{agent_name}]:\n{result}")
+        # Determine final output based on combiner availability
+        if self.result_combiner:
+            # Use LLM to synthesize results
+            combined_output = await self._combine_with_llm(
+                task, parallel_results, context
+            )
+            final_output = combined_output
+        else:
+            # Create a summary output (existing behavior)
+            output_lines = ["Parallel execution results:"]
+            for agent_name, result in parallel_results.items():
+                output_lines.append(f"\n[{agent_name}]:\n{result}")
+            final_output = "\n".join(output_lines)
 
         return StepResult(
-            output="\n".join(output_lines),
+            output=final_output,
             metadata={
                 "parallel_results": parallel_results,
                 "execution_time": "parallel",
                 "agents_involved": [agent.name for agent in self.agents],
+                "combined_by": self.result_combiner.name if self.result_combiner else "concatenation",
             },
         )
+
+    async def _combine_with_llm(
+        self, task: str, parallel_results: dict[str, str], context: Context
+    ) -> str:
+        """Use LLM to synthesize parallel results into a coherent output."""
+        # Build prompt for the combiner
+        combine_prompt = self._build_prompt_with_time(
+            f"Synthesize the following parallel results for the task: {task}",
+            context
+        )
+        
+        combine_prompt += "\n\nParallel Results:"
+        for agent_name, result in parallel_results.items():
+            combine_prompt += f"\n\n[{agent_name}]:\n{result}"
+        
+        combine_prompt += "\n\nPlease synthesize these results into a coherent, unified response that captures the key insights and findings from all agents."
+        
+        # Get combined result
+        combined_result = await self.result_combiner.work_on(combine_prompt)
+        return str(combined_result)
 
 
 class SplitStep(Step):
