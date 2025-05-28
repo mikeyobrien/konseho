@@ -9,6 +9,16 @@ from .model_step_planner import ModelStepPlanner
 from .persona_registry import PERSONA_REGISTRY, PersonaRegistry, PersonaTemplate
 from .step_planner import StepPlanner
 
+# LLM-native dynamic council generation
+from .llm_native import (
+    LLMCouncilGenerator,
+    LLMCouncilBuilder,
+    AgentSpec,
+    StepSpec,
+    CouncilSpec,
+    StepType,
+)
+
 __all__ = [
     # Original components
     "QueryAnalyzer",
@@ -25,4 +35,11 @@ __all__ = [
     "ModelAnalyzer",
     "ModelAgentFactory",
     "ModelStepPlanner",
+    # LLM-native components
+    "LLMCouncilGenerator",
+    "LLMCouncilBuilder",
+    "AgentSpec",
+    "StepSpec",
+    "CouncilSpec",
+    "StepType",
 ]
