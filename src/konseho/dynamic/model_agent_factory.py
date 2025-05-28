@@ -2,17 +2,18 @@
 from __future__ import annotations
 
 from typing import Any
+from konseho.protocols import JSON
 from ..agents.base import AgentWrapper, create_agent
-from .persona_registry import PERSONA_REGISTRY
+from .persona_registry import PERSONA_REGISTRY, PersonaTemplate
 
 
 class ModelAgentFactory:
     """Creates agents based on model-generated specifications."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.registry = PERSONA_REGISTRY
 
-    def _resolve_tools(self, tool_names: list[Any]) ->list[Any]:
+    def _resolve_tools(self, tool_names: list[object]) ->list[object]:
         """Resolve tool names to actual tool instances.
 
         Args:
@@ -39,7 +40,7 @@ class ModelAgentFactory:
                 resolved_tools.append(item)
         return resolved_tools
 
-    def _get_mcp_search_tool(self):
+    def _get_mcp_search_tool(self) -> object | None:
         """Try to get search tool from MCP servers.
 
         Returns:
@@ -55,7 +56,7 @@ class ModelAgentFactory:
             print(f'Could not get MCP search tool: {e}')
         return None
 
-    def create_agents_from_spec(self, agent_specs: list[dict[str, Any]]
+    def create_agents_from_spec(self, agent_specs: list[dict[str, object]]
         ) ->list[AgentWrapper]:
         """Create agents from model-generated specifications.
 
@@ -67,7 +68,10 @@ class ModelAgentFactory:
         """
         agents = []
         for spec in agent_specs:
-            agent_name = spec['name']
+            agent_name_value = spec.get('name')
+            if not isinstance(agent_name_value, str):
+                raise ValueError(f"Agent spec missing valid 'name': {spec}")
+            agent_name = agent_name_value
             if persona_template := self.registry.get_persona(agent_name):
                 tools = self._resolve_tools(persona_template.tools)
                 strands_agent = create_agent(name=agent_name, system_prompt
@@ -78,14 +82,14 @@ class ModelAgentFactory:
                     persona_template)
             else:
                 raise ValueError(
-                    f"Agent '{agent_name}' not found in persona registry. Model must only suggest agents from the available personas. Available agents: {', '.join(self.registry.get_all_names())}"
+                    f"Agent '{agent_name}' not found in persona registry. Model must only suggest agents from the available personas. Available agents: {', '.join([p.name for p in self.registry.get_all_personas()])}"
                     )
             agent_wrapper = AgentWrapper(strands_agent, name=agent_name,
                 expertise_level=expertise_level)
             agents.append(agent_wrapper)
         return agents
 
-    def _get_expertise_level_from_template(self, template) ->float:
+    def _get_expertise_level_from_template(self, template: PersonaTemplate) ->float:
         """Get expertise level based on persona template."""
         if (template.category == 'technical' and 'architecture' in template
             .expertise):
@@ -97,12 +101,18 @@ class ModelAgentFactory:
         else:
             return 0.75
 
-    def _build_persona(self, spec: dict[str, Any]) ->str:
+    def _build_persona(self, spec: dict[str, object]) ->str:
         """Build a detailed persona from agent specification."""
-        name = spec['name']
-        role = spec['role']
+        name = spec.get('name', 'agent')
+        role = spec.get('role', 'assistant')
         expertise = spec.get('expertise', 'general')
         personality = spec.get('personality', 'collaborative')
+        
+        # Ensure all values are strings
+        name = str(name)
+        role = str(role)
+        expertise = str(expertise)
+        personality = str(personality)
         personality_traits = {'collaborative':
             'You work well with others, building on ideas and finding common ground.'
             , 'analytical':

@@ -5,6 +5,7 @@ import inspect
 import json
 from collections.abc import Callable
 from typing import Any
+from konseho.protocols import JSON
 
 
 class MCPToolAdapter:
@@ -15,7 +16,7 @@ class MCPToolAdapter:
     that agents can work with effectively.
     """
 
-    def __init__(self, mcp_tool: Callable, name: (str | None)=None):
+    def __init__(self, mcp_tool: Callable[..., Any], name: (str | None)=None):
         """Initialize MCP tool adapter.
 
         Args:
@@ -28,7 +29,7 @@ class MCPToolAdapter:
         self.__doc__ = getattr(mcp_tool, '__doc__', '')
         self._signature = inspect.signature(mcp_tool)
 
-    def __call__(self, *args, **kwargs) ->Any:
+    def __call__(self, *args: object, **kwargs: object) -> object:
         """Execute the MCP tool with enhanced response handling.
 
         Returns:
@@ -42,7 +43,7 @@ class MCPToolAdapter:
             return {'error': str(e), 'tool': self.name, 'args': {'args':
                 args, 'kwargs': kwargs}}
 
-    def _process_response(self, response: Any) ->Any:
+    def _process_response(self, response: object) -> object:
         """Process MCP response to make it more structured and agent-friendly.
 
         Many MCP tools return strings with formatted output. This method
@@ -60,7 +61,7 @@ class MCPToolAdapter:
             return {'type': 'text', 'content': response, 'tool': self.name}
         return response
 
-    def _parse_structured_string(self, text: str) ->(dict[str, Any] | None):
+    def _parse_structured_string(self, text: str) ->(dict[str, object] | None):
         """Parse common structured string formats from MCP tools."""
         lines = text.strip().split('\n')
         if any(line.strip().startswith(('1.', '2.', '3.')) for line in lines):
@@ -92,7 +93,7 @@ class MCPToolAdapter:
         return None
 
 
-def adapt_mcp_tools(tools: list[Any], adapt_all: bool=False) ->list[Any]:
+def adapt_mcp_tools(tools: list[object], adapt_all: bool=False) ->list[object]:
     """Adapt MCP tools for use with Konseho agents.
 
     Args:
@@ -102,16 +103,19 @@ def adapt_mcp_tools(tools: list[Any], adapt_all: bool=False) ->list[Any]:
     Returns:
         List of tools with MCP tools wrapped in adapters
     """
-    adapted_tools = []
+    adapted_tools: list[object] = []
     for tool in tools:
         if should_adapt_tool(tool) or adapt_all:
-            adapted_tools.append(MCPToolAdapter(tool))
+            if callable(tool):
+                adapted_tools.append(MCPToolAdapter(tool))
+            else:
+                adapted_tools.append(tool)
         else:
             adapted_tools.append(tool)
     return adapted_tools
 
 
-def should_adapt_tool(tool: Any) ->bool:
+def should_adapt_tool(tool: object) ->bool:
     """Determine if a tool should be wrapped with MCP adapter.
 
     Args:
@@ -129,8 +133,8 @@ def should_adapt_tool(tool: Any) ->bool:
     return any(mcp_indicators)
 
 
-def create_mcp_tool(name: str, description: str, mcp_function: Callable
-    ) ->Callable:
+def create_mcp_tool(name: str, description: str, mcp_function: Callable[..., Any]
+    ) ->Callable[..., Any]:
     """Create a Konseho-compatible tool from an MCP function.
 
     This is useful when you want to manually wrap specific MCP tools
@@ -154,7 +158,8 @@ def create_mcp_tool(name: str, description: str, mcp_function: Callable
     adapter = MCPToolAdapter(mcp_function, name)
     adapter.__doc__ = description
     sig = inspect.signature(mcp_function)
-    adapter.__signature__ = sig
+    # Store signature for inspection
+    setattr(adapter, '__signature__', sig)
     return adapter
 
 

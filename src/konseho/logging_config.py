@@ -6,7 +6,7 @@ import sys
 
 
 def configure_logging(level: str='INFO', show_api_calls: bool=True,
-    api_call_format: (str | None)=None):
+    api_call_format: (str | None)=None) -> None:
     """Configure logging for Konseho applications.
 
     Args:
@@ -23,7 +23,7 @@ def configure_logging(level: str='INFO', show_api_calls: bool=True,
         logging.getLogger('httpx').setLevel(logging.WARNING)
 
 
-def configure_api_logging(format_string: str='simple'):
+def configure_api_logging(format_string: str='simple') -> None:
     """Configure API call logging with different formats.
 
     Args:
@@ -34,12 +34,12 @@ def configure_api_logging(format_string: str='simple'):
 
     class APICallFormatter(logging.Formatter):
 
-        def __init__(self):
+        def __init__(self) -> None:
             super().__init__()
             self.api_call_count = 0
             self.tool_use_count = 0
 
-        def format(self, record):
+        def format(self, record: logging.LogRecord) -> str:
             msg = record.getMessage()
             if 'POST https://api.anthropic.com' in msg:
                 self.api_call_count += 1
@@ -63,24 +63,24 @@ def configure_api_logging(format_string: str='simple'):
         handler.setFormatter(formatter)
 
 
-def use_minimal_logging():
+def use_minimal_logging() -> None:
     """Minimal logging - only warnings and errors."""
     configure_logging(level='WARNING', show_api_calls=False)
 
 
-def use_clean_logging():
+def use_clean_logging() -> None:
     """Clean logging - simple API call indicators."""
     configure_logging(level='INFO', show_api_calls=True, api_call_format=
         'simple')
 
 
-def use_detailed_logging():
+def use_detailed_logging() -> None:
     """Detailed logging - shows tool use vs initial requests."""
     configure_logging(level='INFO', show_api_calls=True, api_call_format=
         'detailed')
 
 
-def use_debug_logging():
+def use_debug_logging() -> None:
     """Debug logging - shows everything."""
     configure_logging(level='DEBUG', show_api_calls=True, api_call_format=
         'detailed')

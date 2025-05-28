@@ -6,6 +6,7 @@ import json
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
+from konseho.protocols import JSON
 
 
 class OutputManager:
@@ -20,8 +21,8 @@ class OutputManager:
         self.base_dir = Path(base_dir)
         self.base_dir.mkdir(parents=True, exist_ok=True)
 
-    def save_output(self, task: str, result: dict[str, Any], council_name:
-        str='Council', metadata: (dict[str, Any] | None)=None, filename: (
+    def save_output(self, task: str, result: dict[str, JSON], council_name:
+        str='Council', metadata: (dict[str, JSON] | None)=None, filename: (
         str | None)=None) ->Path:
         """Save council output to a file.
 
@@ -49,8 +50,8 @@ class OutputManager:
             json.dump(output_data, f, indent=2, ensure_ascii=False)
         return output_path
 
-    def save_formatted_output(self, task: str, result: dict[str, Any],
-        council_name: str='Council', metadata: (dict[str, Any] | None)=None,
+    def save_formatted_output(self, task: str, result: dict[str, JSON],
+        council_name: str='Council', metadata: (dict[str, JSON] | None)=None,
         filename: (str | None)=None) ->Path:
         """Save council output in a human-readable format.
 
@@ -80,21 +81,24 @@ class OutputManager:
                 output_lines.append(f'  {key}: {value}')
             output_lines.append('')
         if 'results' in result:
-            for step_name, step_data in result['results'].items():
-                output_lines.append(f'\n{step_name.upper()}')
-                output_lines.append('-' * 40)
-                if isinstance(step_data, dict):
-                    if 'parallel_results' in step_data:
-                        for agent_name, agent_result in step_data[
-                            'parallel_results'].items():
-                            output_lines.append(f'\n[{agent_name}]:')
-                            output_lines.append(self._format_agent_result(
-                                agent_result))
-                    elif 'winner' in step_data:
-                        output_lines.append(
-                            f"\nWinner: {step_data.get('winner', 'N/A')}")
-                        if 'proposals' in step_data:
-                            output_lines.append('\nProposals:')
+            results_value = result['results']
+            if isinstance(results_value, dict):
+                for step_name, step_data in results_value.items():
+                    output_lines.append(f'\n{step_name.upper()}')
+                    output_lines.append('-' * 40)
+                    if isinstance(step_data, dict):
+                        if 'parallel_results' in step_data:
+                            parallel_results = step_data['parallel_results']
+                            if isinstance(parallel_results, dict):
+                                for agent_name, agent_result in parallel_results.items():
+                                    output_lines.append(f'\n[{agent_name}]:')
+                                    output_lines.append(self._format_agent_result(
+                                        agent_result))
+                        elif 'winner' in step_data:
+                            output_lines.append(
+                                f"\nWinner: {step_data.get('winner', 'N/A')}")
+                            if 'proposals' in step_data:
+                                output_lines.append('\nProposals:')
                             proposals = step_data['proposals']
                             if isinstance(proposals, dict):
                                 for agent_name, content in proposals.items():
@@ -129,7 +133,7 @@ class OutputManager:
                 'metadata': metadata or {}}, f, indent=2, ensure_ascii=False)
         return output_path
 
-    def _format_agent_result(self, agent_result: Any) ->str:
+    def _format_agent_result(self, agent_result: JSON) ->str:
         """Format an individual agent's result."""
         if isinstance(agent_result, str):
             return agent_result
@@ -137,13 +141,13 @@ class OutputManager:
             content = agent_result['content']
             if isinstance(content, list) and len(content) > 0:
                 if isinstance(content[0], dict) and 'text' in content[0]:
-                    return content[0]['text']
+                    return str(content[0]['text'])
                 elif isinstance(content[0], str):
                     return content[0]
         return str(agent_result)
 
     def list_outputs(self, council_name: (str | None)=None) ->list[dict[str,
-        Any]]:
+        object]]:
         """List all saved outputs.
 
         Args:
@@ -175,7 +179,7 @@ class OutputManager:
         outputs.sort(key=lambda x: x['timestamp'], reverse=True)
         return outputs
 
-    def load_output(self, filepath: (str | Path)) ->dict[str, Any]:
+    def load_output(self, filepath: (str | Path)) ->dict[str, JSON]:
         """Load a saved output file.
 
         Args:
@@ -185,9 +189,10 @@ class OutputManager:
             The loaded output data
         """
         with open(filepath) as f:
-            return json.load(f)
+            data: dict[str, JSON] = json.load(f)
+            return data
 
-    def cleanup_old_outputs(self, days: int=30):
+    def cleanup_old_outputs(self, days: int=30) -> None:
         """Remove outputs older than specified days.
 
         Args:

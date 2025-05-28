@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any
+from konseho.protocols import JSON
 
 
 @dataclass
@@ -15,17 +16,17 @@ class PersonaTemplate:
     description: str
     system_prompt: str
     temperature: float = 0.7
-    tools: list[Any] = field(default_factory=list)
+    tools: list[object] = field(default_factory=list)
 
 
 class PersonaRegistry:
     """Registry of all available agent personas."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.personas: dict[str, PersonaTemplate] = {}
         self._initialize_default_personas()
 
-    def _initialize_default_personas(self):
+    def _initialize_default_personas(self) -> None:
         """Initialize the registry with default personas."""
         self.register(PersonaTemplate(name='Security Expert', category=
             'technical', expertise=['security', 'vulnerabilities',
@@ -165,11 +166,11 @@ Focus on: practical solutions, implementation details, feasibility, and executio
 Turn ideas into actionable steps."""
             , temperature=0.6))
 
-    def register(self, persona: PersonaTemplate):
+    def register(self, persona: PersonaTemplate) -> None:
         """Register a new persona template."""
         self.personas[persona.name] = persona
 
-    def get_persona(self, name: str) ->PersonaTemplate:
+    def get_persona(self, name: str) ->PersonaTemplate | None:
         """Get a specific persona by name."""
         return self.personas.get(name)
 
@@ -189,7 +190,7 @@ Turn ideas into actionable steps."""
     def get_registry_summary(self) ->str:
         """Get a summary of available personas for the model."""
         summary = 'Available Agent Personas:\n\n'
-        by_category = {}
+        by_category: dict[str, list[PersonaTemplate]] = {}
         for persona in self.personas.values():
             if persona.category not in by_category:
                 by_category[persona.category] = []

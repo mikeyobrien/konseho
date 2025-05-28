@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Any
+from konseho.protocols import JSON
 try:
     from rich.console import Console
     from rich.live import Live
@@ -31,9 +32,9 @@ class ChatInterface:
         self.output_dir = output_dir
         if self.use_rich:
             self.console = Console()
-        self._event_log = []
+        self._event_log: list[tuple[str, JSON]] = []
 
-    def _extract_text_content(self, content: Any) ->str:
+    def _extract_text_content(self, content: JSON) ->str:
         """Extract text from various agent response formats."""
         if isinstance(content, str):
             try:
@@ -45,18 +46,18 @@ class ChatInterface:
         elif isinstance(content, list):
             if content and isinstance(content[0], dict) and 'text' in content[0
                 ]:
-                return content[0]['text']
+                return str(content[0]['text'])
             elif content and isinstance(content[0], str):
                 return content[0]
             else:
                 return str(content)
         elif isinstance(content, dict):
             if 'text' in content:
-                return content['text']
+                return str(content['text'])
             elif 'content' in content:
                 return self._extract_text_content(content['content'])
             elif 'message' in content:
-                return content['message']
+                return str(content['message'])
             else:
                 return str(content)
         else:
@@ -75,7 +76,7 @@ Multi-agent collaboration framework"""
             print('Multi-agent collaboration framework')
             print('=' * 50)
 
-    def _display_step_result(self, step_result: Any) ->None:
+    def _display_step_result(self, step_result: object) ->None:
         """Display the result of a single step."""
         try:
             if hasattr(step_result, 'output') and hasattr(step_result,
@@ -225,11 +226,10 @@ Multi-agent collaboration framework"""
             else:
                 print(f'Error displaying step result: {str(e)}')
 
-    def display_event(self, event: str, data: dict[str, Any]) ->None:
+    def display_event(self, event: str, data: dict[str, JSON]) ->None:
         """Display an event in the interface."""
         timestamp = datetime.now().strftime('%H:%M:%S')
-        self._event_log.append({'time': timestamp, 'event': event, 'data':
-            data})
+        self._event_log.append((event, data))
         if self.use_rich:
             if event == 'council:start':
                 self.console.print(
@@ -261,19 +261,23 @@ Multi-agent collaboration framework"""
         else:
             print(f'[{timestamp}] {event}: {data}')
 
-    def display_result(self, result: dict[str, Any]) ->None:
+    def display_result(self, result: dict[str, JSON]) ->None:
         """Display final result."""
         try:
             if 'results' in result:
-                if step_results := result['results']:
-                    for i, step_result in enumerate(step_results):
+                step_results_value = result['results']
+                if isinstance(step_results_value, list):
+                    for i, step_result in enumerate(step_results_value):
                         step_desc = f'Step {i + 1}'
-                        if hasattr(step_result, 'metadata'):
-                            if 'winner' in step_result.metadata:
-                                step_desc = f'Step {i + 1}: Final Decision'
-                            elif 'parallel_results' in step_result.metadata:
-                                step_desc = (
-                                    f'Step {i + 1}: Agent Research & Analysis')
+                        # Check for metadata in step result
+                        if isinstance(step_result, dict) and 'metadata' in step_result:
+                            metadata = step_result['metadata']
+                            if isinstance(metadata, dict):
+                                if 'winner' in metadata:
+                                    step_desc = f'Step {i + 1}: Final Decision'
+                                elif 'parallel_results' in metadata:
+                                    step_desc = (
+                                        f'Step {i + 1}: Agent Research & Analysis')
                         if self.use_rich:
                             self.console.print(
                                 f'\n[bold cyan]━━━ {step_desc} ━━━[/bold cyan]'
@@ -298,7 +302,7 @@ Multi-agent collaboration framework"""
             else:
                 print(f'Error displaying result: {str(e)}')
 
-    async def interactive_session(self, council) ->None:
+    async def interactive_session(self, council: object) ->None:
         """Run an interactive session with a council."""
         self.display_welcome()
         if hasattr(council, '_event_emitter'):
@@ -323,7 +327,10 @@ Multi-agent collaboration framework"""
                     task = input("\nEnter task (or 'quit' to exit): ")
                 if task.lower() in ['quit', 'exit', 'q']:
                     break
-                result = await council.execute(task)
+                if hasattr(council, 'execute'):
+                    result = await council.execute(task)
+                else:
+                    raise AttributeError("Council object does not have execute method")
                 self.display_result(result)
             except KeyboardInterrupt:
                 break
