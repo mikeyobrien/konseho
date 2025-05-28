@@ -3,11 +3,11 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any
+from typing import Any, cast, AsyncGenerator
 from strands import Agent
 from ..agents.base import AgentWrapper
 from ..factories import CouncilDependencies
-from ..protocols import IAgent, IStepResult
+from ..protocols import IAgent, IStepResult, IStep, JSON, StepMetadata
 from .error_handler import ErrorHandler, ErrorStrategy
 from .moderator_assigner import ModeratorAssigner
 from .step_orchestrator import StepOrchestrator
@@ -47,19 +47,26 @@ class Council:
         if steps is not None:
             self.steps = steps
         elif agents is not None:
-            self.steps = [DebateStep(agents)]
+            # Convert all agents to AgentWrapper if needed
+            wrapped_agents = [
+                AgentWrapper(agent) if isinstance(agent, Agent) else agent
+                for agent in agents
+            ]
+            self.steps = [DebateStep(wrapped_agents)]
         else:
             self.steps = []
         self._error_handler = ErrorHandler(error_strategy=ErrorStrategy(
             error_strategy), max_retries=max_retries, event_emitter=self.
             _event_emitter)
-        self._step_orchestrator = StepOrchestrator(steps=self.steps,
+        # Cast steps to IStep for type compatibility
+        isteps = cast(list[IStep], self.steps)
+        self._step_orchestrator = StepOrchestrator(steps=isteps,
             event_emitter=self._event_emitter, output_manager=self.
             output_manager, error_handler=self._error_handler)
         self._moderator_assigner = ModeratorAssigner()
-        self._moderator_assigner.assign_moderators(self.steps)
+        self._moderator_assigner.assign_moderators(isteps)
 
-    async def execute(self, task: str) ->dict[str, Any]:
+    async def execute(self, task: str) -> dict[str, JSON]:
         """Execute the council workflow with the given task.
 
         Args:
@@ -68,14 +75,16 @@ class Council:
         Returns:
             Summary of execution results
         """
-        results = await self._step_orchestrator.execute_steps(task, self.
-            context, self.name)
+        # Import Context type for casting
+        from .context import Context
+        ctx = cast(Context, self.context)
+        results = await self._step_orchestrator.execute_steps(task, ctx, self.name)
         final_result = self._prepare_final_result(task, results)
         if self.save_outputs:
             await self._save_output(task, final_result)
         return final_result
 
-    def run(self, task: str) ->dict[str, Any]:
+    def run(self, task: str) -> dict[str, JSON]:
         """Synchronous wrapper for execute.
 
         Args:
@@ -86,7 +95,7 @@ class Council:
         """
         return asyncio.run(self.execute(task))
 
-    async def stream_execute(self, task: str):
+    async def stream_execute(self, task: str) -> AsyncGenerator[dict[str, JSON], None]:
         """Execute the council workflow with streaming events.
 
         Args:
@@ -105,8 +114,8 @@ class Council:
             step: The step to add
         """
         self.steps.append(step)
-        self._step_orchestrator.steps = self.steps
-        self._moderator_assigner.assign_moderators([step])
+        self._step_orchestrator.steps = cast(list[IStep], self.steps)
+        self._moderator_assigner.assign_moderators(cast(list[IStep], [step]))
 
     def set_moderator_pool(self, agents: list[IAgent]) ->None:
         """Set the pool of agents that can act as moderators.
@@ -115,18 +124,18 @@ class Council:
             agents: List of agents to use as moderators
         """
         self._moderator_assigner.set_moderator_pool(agents)
-        self._moderator_assigner.assign_moderators(self.steps)
+        self._moderator_assigner.assign_moderators(cast(list[IStep], self.steps))
 
-    def set_fallback_handler(self, handler) ->None:
+    def set_fallback_handler(self, handler: object) -> None:
         """Set a custom fallback handler for error handling.
 
         Args:
             handler: Callable that handles fallback scenarios
         """
-        self._error_handler.fallback_handler = handler
+        self._error_handler.fallback_handler = handler  # type: ignore[assignment]
 
     def _prepare_final_result(self, task: str, results: list[IStepResult]
-        ) ->dict[str, Any]:
+        ) -> dict[str, JSON]:
         """Prepare the final result summary.
 
         Args:
@@ -136,13 +145,17 @@ class Council:
         Returns:
             Summary dictionary
         """
-        summary = self.context.get_summary()
+        # Handle IContext vs Context
+        if hasattr(self.context, 'get_summary'):
+            summary = self.context.get_summary()
+        else:
+            summary = {}
         summary.update({'council': self.name, 'task': task, 'workflow':
             self.workflow, 'steps_completed': len(results),
             'agents_involved': self._get_agent_names()})
         return summary
 
-    async def _save_output(self, task: str, result: dict[str, Any]) ->None:
+    async def _save_output(self, task: str, result: dict[str, JSON]) -> None:
         """Save the council output.
 
         Args:
@@ -152,14 +165,16 @@ class Council:
         if not self.output_manager:
             return
         try:
-            metadata = {'error_strategy': self._error_handler.
-                error_strategy.value, 'workflow': self.workflow,
-                'num_steps': len(self.steps), 'agents': self._get_agent_names()
-                }
+            metadata: dict[str, JSON] = {
+                'error_strategy': self._error_handler.error_strategy.value,
+                'workflow': self.workflow,
+                'num_steps': len(self.steps),
+                'agents': cast(JSON, self._get_agent_names())
+            }
             output_path = self.output_manager.save_formatted_output(task=
                 task, result=result, council_name=self.name, metadata=metadata)
             logger.info(f'Council output saved to: {output_path}')
-            if self._event_emitter:
+            if self._event_emitter is not None:
                 self._event_emitter.emit('output:saved', {'path': str(
                     output_path)})
         except Exception as e:
