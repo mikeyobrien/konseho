@@ -7,7 +7,6 @@ from .base import AgentWrapper
 
 
 class HumanAgent(AgentWrapper):
-    __slots__ = ()
     """Agent that prompts for human input."""
 
     def __init__(self, name: str='human', input_handler: (Callable[[str],

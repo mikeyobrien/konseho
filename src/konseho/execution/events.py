@@ -12,7 +12,6 @@ logger = logging.getLogger(__name__)
 
 
 class EventType(Enum):
-    __slots__ = ()
     """Types of events emitted during council execution."""
     COUNCIL_STARTED = 'council:start'
     COUNCIL_COMPLETED = 'council:complete'
@@ -39,7 +38,6 @@ class EventType(Enum):
 
 @dataclass
 class CouncilEvent:
-    __slots__ = ()
     """Event data structure for council execution events."""
     type: EventType
     data: dict[str, Any]
@@ -48,7 +46,6 @@ class CouncilEvent:
 
 
 class EventEmitter:
-    __slots__ = ()
     """Simple event emitter for council execution events."""
 
     def __init__(self):

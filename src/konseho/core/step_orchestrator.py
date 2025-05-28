@@ -11,7 +11,6 @@ logger = logging.getLogger(__name__)
 
 
 class StepOrchestrator:
-    __slots__ = ()
     """Orchestrates the execution of steps in sequence."""
 
     def __init__(self, steps: list[IStep], event_emitter: (IEventEmitter |

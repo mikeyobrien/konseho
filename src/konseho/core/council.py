@@ -16,7 +16,6 @@ logger = logging.getLogger(__name__)
 
 
 class Council:
-    __slots__ = ()
     """Coordinates multi-agent workflows through composition of specialized components."""
 
     def __init__(self, name: str='council', steps: (list[Step] | None)=None,

@@ -9,7 +9,6 @@ from .search_ops import SearchProvider
 
 
 class MCPSearchProvider(SearchProvider):
-    __slots__ = ()
     """Adapter to use MCP search tools as search providers.
 
     This provider wraps MCP search tools (like brave_search, tavily_search, etc.)

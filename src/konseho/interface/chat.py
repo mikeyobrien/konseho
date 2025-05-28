@@ -15,7 +15,6 @@ except ImportError:
 
 
 class ChatInterface:
-    __slots__ = ()
     """Terminal interface for interacting with councils."""
 
     def __init__(self, use_rich: bool=True, save_outputs: bool=False,

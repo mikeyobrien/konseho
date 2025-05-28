@@ -7,7 +7,6 @@ from ..dynamic.analyzer import TaskType
 
 
 class StepPlanner:
-    __slots__ = ()
     """Plans and creates step sequences for councils."""
 
     def __init__(self):

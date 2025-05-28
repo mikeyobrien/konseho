@@ -14,7 +14,6 @@ logger = logging.getLogger(__name__)
 
 
 class ErrorStrategy(str, Enum):
-    __slots__ = ()
     """Strategies for handling errors during execution."""
     HALT = 'halt'
     CONTINUE = 'continue'
@@ -23,7 +22,6 @@ class ErrorStrategy(str, Enum):
 
 
 class ErrorHandler:
-    __slots__ = ()
     """Handles error strategies and retry logic for Council execution."""
 
     def __init__(self, error_strategy: ErrorStrategy=ErrorStrategy.HALT,

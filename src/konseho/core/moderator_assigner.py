@@ -10,7 +10,6 @@ logger = logging.getLogger(__name__)
 
 
 class ModeratorAssigner:
-    __slots__ = ()
     """Handles assignment of moderators to debate steps."""
 
     def __init__(self, default_moderator: (IAgent | None)=None):

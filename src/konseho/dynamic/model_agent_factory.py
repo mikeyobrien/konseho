@@ -7,7 +7,6 @@ from .persona_registry import PERSONA_REGISTRY
 
 
 class ModelAgentFactory:
-    __slots__ = ()
     """Creates agents based on model-generated specifications."""
 
     def __init__(self):

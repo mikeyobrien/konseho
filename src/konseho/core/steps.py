@@ -15,7 +15,6 @@ logger = logging.getLogger(__name__)
 
 
 class StepResult:
-    __slots__ = ()
     """Result from a step execution."""
 
     def __init__(self, output: str, metadata: (dict[str, Any] | None)=None):
@@ -64,7 +63,6 @@ class Step(ABC):
 
 
 class DebateStep(Step):
-    __slots__ = ()
     """Agents propose competing solutions and vote on the best one."""
 
     def __init__(self, agents: list[AgentWrapper], moderator: (AgentWrapper |
@@ -346,7 +344,6 @@ Proposals:
 
 
 class ParallelStep(Step):
-    __slots__ = ()
     """Agents work on different aspects simultaneously."""
 
     def __init__(self, agents: list[AgentWrapper], task_splitter: (Callable |
@@ -407,7 +404,6 @@ Please synthesize these results into a coherent, unified response that captures 
 
 
 class SplitStep(Step):
-    __slots__ = ()
     """Dynamically split work across multiple agent instances."""
 
     def __init__(self, agent_template: Agent, min_agents: int=2, max_agents:

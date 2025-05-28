@@ -14,7 +14,6 @@ from konseho.protocols import IAgent, IContext, IStep, IStepResult
 
 
 class AgentAdapter(IAgent):
-    __slots__ = ()
     """Adapt existing AgentWrapper to IAgent protocol."""
 
     def __init__(self, agent: AgentWrapper):
@@ -52,7 +51,6 @@ class AgentAdapter(IAgent):
 
 
 class StepAdapter(IStep):
-    __slots__ = ()
     """Adapt existing Step to IStep protocol."""
 
     def __init__(self, step: Step):
@@ -88,7 +86,6 @@ class StepAdapter(IStep):
 
 
 class StepResultAdapter(IStepResult):
-    __slots__ = ()
     """Adapt existing StepResult to IStepResult protocol."""
 
     def __init__(self, result: StepResult):
@@ -116,7 +113,6 @@ class StepResultAdapter(IStepResult):
 
 
 class ContextAdapter(IContext):
-    __slots__ = ()
     """Adapt existing Context to IContext protocol."""
 
     def __init__(self, context: Context):
@@ -159,7 +155,6 @@ class ContextAdapter(IContext):
 
 
 class MockAgent(IAgent):
-    __slots__ = ()
     """Mock agent for testing purposes."""
 
     def __init__(self, name: str, model: str='mock', response: str=
@@ -196,7 +191,6 @@ class MockAgent(IAgent):
 
 
 class MockStep(IStep):
-    __slots__ = ()
     """Mock step for testing purposes."""
 
     def __init__(self, name: str, output: str='Mock output', should_fail:
@@ -229,7 +223,6 @@ class MockStep(IStep):
 
 
 class MockStepResult(IStepResult):
-    __slots__ = ()
     """Mock step result for testing."""
 
     def __init__(self, output: str, success: bool=True):
@@ -260,7 +253,6 @@ class MockStepResult(IStepResult):
 
 
 class MockEventEmitter:
-    __slots__ = ()
     """Mock event emitter for testing."""
 
     def __init__(self):
@@ -301,7 +293,6 @@ class MockEventEmitter:
 
 
 class MockOutputManager:
-    __slots__ = ()
     """Mock output manager for testing."""
 
     def __init__(self):

@@ -7,7 +7,6 @@ from typing import Any
 
 @dataclass
 class PersonaTemplate:
-    __slots__ = ()
     """Template for an agent persona."""
     name: str
     category: str
@@ -20,7 +19,6 @@ class PersonaTemplate:
 
 
 class PersonaRegistry:
-    __slots__ = ()
     """Registry of all available agent personas."""
 
     def __init__(self):

@@ -4,14 +4,31 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import Callable
-from typing import Any
+from typing import Any, TYPE_CHECKING, TypedDict, Protocol
+
+if TYPE_CHECKING:
+    from asyncio import AbstractEventLoop
+
+
+class ServerInfo(TypedDict):
+    """Type definition for server information."""
+    name: str
+    enabled: bool
+    running: bool
+    command: str
+    tools: int
+
+
+class ToolFunction(Protocol):
+    """Protocol for MCP tool functions."""
+    def __call__(self, *args: object, **kwargs: object) -> object:
+        ...
 from konseho.mcp.config import MCPConfigManager, MCPServerConfig
 from konseho.mcp.server import MCPServerManager, MCPToolSelector, ToolPreset
 logger = logging.getLogger(__name__)
 
 
 class MCP:
-    __slots__ = ()
     """High-level interface for MCP integration."""
 
     def __init__(self, config_path: (str | None)=None):
@@ -23,9 +40,9 @@ class MCP:
         self.config_manager = MCPConfigManager(config_path)
         self.server_manager = MCPServerManager(self.config_manager)
         self.tool_selector = MCPToolSelector(self.server_manager)
-        self._loop = None
+        self._loop: AbstractEventLoop | None = None
 
-    def _ensure_loop(self):
+    def _ensure_loop(self) -> None:
         """Ensure event loop exists for async operations."""
         if self._loop is None:
             try:
@@ -44,6 +61,8 @@ class MCP:
             True if successful
         """
         self._ensure_loop()
+        if self._loop is None:
+            return False
         return self._loop.run_until_complete(self.server_manager.
             start_server(name))
 
@@ -54,7 +73,8 @@ class MCP:
             Dictionary of server_name -> success status
         """
         self._ensure_loop()
-        self._loop.run_until_complete(self.server_manager.start_all_enabled())
+        if self._loop is not None:
+            self._loop.run_until_complete(self.server_manager.start_all_enabled())
         return {name: bool(server.process) for name, server in self.
             server_manager.servers.items()}
 
@@ -68,17 +88,20 @@ class MCP:
             True if successful
         """
         self._ensure_loop()
+        if self._loop is None:
+            return False
         return self._loop.run_until_complete(self.server_manager.
             stop_server(name))
 
-    def stop_all(self):
+    def stop_all(self) -> None:
         """Stop all running MCP servers."""
         self._ensure_loop()
-        self._loop.run_until_complete(self.server_manager.stop_all())
+        if self._loop is not None:
+            self._loop.run_until_complete(self.server_manager.stop_all())
 
     def get_tools(self, tools: (list[str] | None)=None, servers: (list[str] |
         None)=None, exclude_tools: (list[str] | None)=None, exclude_servers:
-        (list[str] | None)=None) ->list[Callable]:
+        (list[str] | None)=None) -> list[ToolFunction]:
         """Get tools with filtering.
 
         Args:
@@ -91,10 +114,10 @@ class MCP:
             List of tool functions ready for use in agents
         """
         return self.tool_selector.select_tools(tool_names=tools,
-            server_names=servers, exclude_tools=exclude_tools,
+            servers=servers, exclude_tools=exclude_tools,
             exclude_servers=exclude_servers)
 
-    def create_preset(self, name: str, **kwargs) ->ToolPreset:
+    def create_preset(self, name: str, **kwargs: object) ->ToolPreset:
         """Create a reusable tool selection preset.
 
         Args:
@@ -119,7 +142,7 @@ class MCP:
         """
         return self.tool_selector.create_tool_preset(name, **kwargs)
 
-    def list_servers(self) ->list[dict[str, Any]]:
+    def list_servers(self) -> list[ServerInfo]:
         """List all configured servers with status.
 
         Returns:
@@ -128,10 +151,15 @@ class MCP:
         servers = []
         for name, config in self.config_manager.servers.items():
             running = name in self.server_manager.servers
-            servers.append({'name': name, 'enabled': config.enabled,
-                'running': running, 'command': config.command, 'tools': len
-                (self.server_manager.get_tools_for_server(name)) if running
-                 else 0})
+            tool_count: int = len(self.server_manager.get_tools_for_server(name)) if running else 0
+            server_info: ServerInfo = {
+                'name': name,
+                'enabled': config.enabled,
+                'running': running,
+                'command': config.command,
+                'tools': tool_count
+            }
+            servers.append(server_info)
         return servers
 
     def list_tools(self) ->list[dict[str, str]]:
@@ -142,8 +170,8 @@ class MCP:
         """
         return self.server_manager.list_tools()
 
-    def add_server(self, name: str, command: str, args: list[str]=None, env:
-        dict[str, str]=None, enabled: bool=True):
+    def add_server(self, name: str, command: str, args: list[str] | None=None, env:
+        dict[str, str] | None=None, enabled: bool=True) -> None:
         """Add a new MCP server configuration.
 
         Args:
@@ -158,22 +186,22 @@ class MCP:
         self.config_manager.add_server(name, config)
         logger.info(f'Added MCP server configuration: {name}')
 
-    def save_config(self):
+    def save_config(self) -> None:
         """Save current configuration to mcp.json."""
         self.config_manager.save_config()
 
-    def __enter__(self):
+    def __enter__(self) -> 'MCP':
         """Context manager entry - start all servers."""
         self.start_all()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: object) -> None:
         """Context manager exit - stop all servers."""
         self.stop_all()
 
 
 def load_mcp_tools(config_path: (str | None)=None, servers: (list[str] |
-    None)=None, tools: (list[str] | None)=None) ->list[Callable]:
+    None)=None, tools: (list[str] | None)=None) -> list[ToolFunction]:
     """Quick function to load MCP tools.
 
     Args:

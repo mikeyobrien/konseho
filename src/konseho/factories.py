@@ -14,7 +14,6 @@ from konseho.protocols import IAgent, IContext, IEventEmitter, IOutputManager, I
 
 
 class CouncilDependencies:
-    __slots__ = ()
     """Container for Council dependencies.
 
     This class holds all the dependencies that a Council needs,
@@ -54,7 +53,6 @@ class CouncilDependencies:
 
 
 class CouncilFactory:
-    __slots__ = ()
     """Factory for creating Council instances with dependency injection."""
 
     def __init__(self, dependencies: (CouncilDependencies | None)=None):

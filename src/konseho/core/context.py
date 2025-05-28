@@ -7,7 +7,6 @@ from typing import Any
 
 
 class Context:
-    __slots__ = ()
     """Manages shared state and context flowing between agents and steps."""
 
     def __init__(self, initial_data: (dict[str, Any] | None)=None):

@@ -14,7 +14,6 @@ logger = logging.getLogger(__name__)
 
 
 class StepExecutor:
-    __slots__ = ()
     """Executes individual steps with parallelization and error handling."""
 
     def __init__(self, error_strategy: str='halt', retry_attempts: int=2,
@@ -101,7 +100,6 @@ class StepExecutor:
 
 
 class AsyncExecutor:
-    __slots__ = ()
     """Manages async execution of councils and steps."""
 
     def __init__(self, max_concurrent: int=5):

@@ -8,7 +8,6 @@ from typing import Any
 
 
 class ParallelExecutor:
-    __slots__ = ()
     """Execute tools in parallel with deduplication."""
 
     def __init__(self, max_workers: int=10):

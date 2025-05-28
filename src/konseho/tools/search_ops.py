@@ -34,7 +34,6 @@ class SearchProvider(ABC):
 
 
 class MockSearchProvider(SearchProvider):
-    __slots__ = ()
     """Mock search provider for testing and demonstration."""
 
     @property
@@ -142,7 +141,6 @@ def web_search(query: str, max_results: int=10, provider: (SearchProvider |
 
 """
 class TavilySearchProvider(SearchProvider):
-    __slots__ = ()
     def __init__(self, api_key: str):
         self.api_key = api_key
         self.client = TavilyClient(api_key)  # hypothetical client

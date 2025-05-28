@@ -11,7 +11,6 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class MCPServerConfig:
-    __slots__ = ()
     """Configuration for a single MCP server."""
     command: str
     args: list[str] = field(default_factory=list)
@@ -31,7 +30,6 @@ class MCPServerConfig:
 
 
 class MCPConfigManager:
-    __slots__ = ()
     """Manage MCP server configurations compatible with mcp.json format."""
 
     def __init__(self, config_path: (str | Path | None)=None):
@@ -82,7 +80,7 @@ class MCPConfigManager:
         except Exception as e:
             logger.error(f'Failed to load MCP config: {e}')
 
-    def save_config(self):
+    def save_config(self) -> None:
         """Save current configuration to mcp.json file."""
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
         data = {'mcpServers': {name: server.to_dict() for name, server in

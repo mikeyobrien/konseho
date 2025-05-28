@@ -17,7 +17,6 @@ logger = logging.getLogger(__name__)
 
 
 class StrandsMCPManager:
-    __slots__ = ()
     """Manage MCP servers using Strands' built-in MCP support."""
 
     def __init__(self, config_path: (str | None)=None):

@@ -7,7 +7,6 @@ from typing import Any
 
 
 class TaskType(Enum):
-    __slots__ = ()
     """Types of tasks that require different council configurations."""
     RESEARCH = 'research'
     CODE_REVIEW = 'code_review'
@@ -20,7 +19,6 @@ class TaskType(Enum):
 
 
 class QueryAnalyzer:
-    __slots__ = ()
     """Analyzes user queries to determine optimal council configuration."""
 
     def __init__(self):

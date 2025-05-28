@@ -13,7 +13,6 @@ except ImportError:
 
 @dataclass
 class ModelConfig:
-    __slots__ = ()
     """Configuration for a model provider."""
     provider: str
     model_id: str

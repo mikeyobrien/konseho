@@ -5,6 +5,13 @@ import logging
 import os
 import subprocess
 from collections.abc import Callable
+from typing import Protocol
+
+
+class ToolFunction(Protocol):
+    """Protocol for MCP tool functions."""
+    def __call__(self, *args: object, **kwargs: object) -> object:
+        ...
 from dataclasses import dataclass
 from typing import Any
 from konseho.mcp.config import MCPConfigManager, MCPServerConfig
@@ -14,7 +21,6 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class MCPServerInstance:
-    __slots__ = ()
     """Running MCP server instance."""
     name: str
     config: MCPServerConfig
@@ -27,7 +33,6 @@ class MCPServerInstance:
 
 
 class MCPServerManager:
-    __slots__ = ()
     """Manage MCP servers and their tools."""
 
     def __init__(self, config_manager: (MCPConfigManager | None)=None):
@@ -106,13 +111,13 @@ class MCPServerManager:
             v != name}
         return True
 
-    async def start_all_enabled(self):
+    async def start_all_enabled(self) -> None:
         """Start all enabled servers from configuration."""
         enabled = self.config_manager.get_enabled_servers()
         for name in enabled:
             await self.start_server(name)
 
-    async def stop_all(self):
+    async def stop_all(self) -> None:
         """Stop all running servers."""
         server_names = list(self.servers.keys())
         for name in server_names:
@@ -210,7 +215,6 @@ class MCPServerManager:
 
 
 class MCPToolSelector:
-    __slots__ = ()
     """Select and configure tools for agents at runtime."""
 
     def __init__(self, server_manager: MCPServerManager):
@@ -224,7 +228,7 @@ class MCPToolSelector:
     def select_tools(self, tool_names: (list[str] | None)=None, servers: (
         list[str] | None)=None, tags: (list[str] | None)=None, preset: (str |
         None)=None, exclude_tools: (list[str] | None)=None, exclude_servers:
-        (list[str] | None)=None) ->list[Callable]:
+        (list[str] | None)=None) -> list[ToolFunction]:
         """Select tools based on criteria.
 
         Args:
@@ -294,7 +298,6 @@ class MCPToolSelector:
 
 @dataclass
 class ToolPreset:
-    __slots__ = ()
     """Reusable tool selection configuration."""
     name: str
     selector: MCPToolSelector

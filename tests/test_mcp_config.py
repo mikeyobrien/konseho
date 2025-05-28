@@ -330,8 +330,7 @@ class TestMCPHighLevel:
             assert len(tools) == 1
             assert callable(tools[0])
     
-    @pytest.mark.asyncio
-    async def test_mcp_start_servers(self):
+    def test_mcp_start_servers(self):
         """Test starting servers through MCP interface."""
         mcp = MCP()
         
@@ -340,10 +339,12 @@ class TestMCPHighLevel:
         mock_start.return_value = True
         mcp.server_manager.start_server = mock_start
         
-        # Start servers
-        results = await mcp.start_servers(["server1", "server2"])
+        # Start servers one by one
+        result1 = mcp.start_server("server1")
+        result2 = mcp.start_server("server2")
         
-        assert results == {"server1": True, "server2": True}
+        assert result1 is True
+        assert result2 is True
         assert mock_start.call_count == 2
     
     @pytest.mark.asyncio

@@ -7,7 +7,6 @@ from ..core.steps import DebateStep, ParallelStep, SplitStep, Step
 
 
 class ModelStepPlanner:
-    __slots__ = ()
     """Creates workflow steps from model-generated specifications."""
 
     def create_steps_from_spec(self, workflow_specs: list[dict[str, Any]],

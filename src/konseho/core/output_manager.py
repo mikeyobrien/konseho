@@ -9,7 +9,6 @@ from typing import Any
 
 
 class OutputManager:
-    __slots__ = ()
     """Manages saving and loading of council execution outputs."""
 
     def __init__(self, base_dir: (str | Path)='council_outputs'):

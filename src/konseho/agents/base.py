@@ -11,7 +11,6 @@ from konseho.tools.parallel import ParallelExecutor
 
 
 class AgentWrapper:
-    __slots__ = ()
     """Wrapper for Strands agents to work within councils."""
 
     def __init__(self, agent: Agent, name: (str | None)=None, **kwargs):

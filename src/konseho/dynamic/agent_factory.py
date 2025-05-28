@@ -7,7 +7,6 @@ from ..dynamic.analyzer import TaskType
 
 
 class DynamicAgentFactory:
-    __slots__ = ()
     """Creates agents with personas tailored to specific tasks."""
 
     def __init__(self):

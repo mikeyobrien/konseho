@@ -89,7 +89,6 @@ Now analyze the following query and return ONLY the JSON response, no additional
 
 
 class ModelBasedAnalyzer:
-    __slots__ = ()
     """Uses an LLM to analyze queries and suggest council configurations."""
 
     def __init__(self, model: (str | None)=None, temperature: float=0.3):
@@ -164,7 +163,6 @@ class ModelBasedAnalyzer:
 
 
 class ModelAnalyzer:
-    __slots__ = ()
     """Model-based query analyzer (no fallback)."""
 
     def __init__(self, model: (str | None)=None, temperature: float=0.3):

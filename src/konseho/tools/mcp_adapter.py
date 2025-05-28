@@ -8,7 +8,6 @@ from typing import Any
 
 
 class MCPToolAdapter:
-    __slots__ = ()
     """Adapter to make any MCP tool compatible with Konseho agents.
 
     This adapter handles the conversion between MCP tool responses

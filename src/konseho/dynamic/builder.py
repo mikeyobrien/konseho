@@ -11,7 +11,6 @@ from .model_step_planner import ModelStepPlanner
 
 
 class DynamicCouncilBuilder:
-    __slots__ = ()
     """Builds councils dynamically based on query analysis."""
 
     def __init__(self, verbose: bool=False, analyzer_model: (str | None)=
