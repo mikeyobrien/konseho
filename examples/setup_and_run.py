@@ -1,8 +1,11 @@
 """Example showing how to set up model providers and run a council."""
 
 import os
+
 from strands import Agent
-from konseho import Council, DebateStep, AgentWrapper
+
+from konseho import AgentWrapper, DebateStep
+from konseho.factories import CouncilFactory
 
 print("=== Konseho Council Example ===\n")
 
@@ -41,11 +44,13 @@ agent1 = Agent(model=model_id, tools=[])
 agent2 = Agent(model=model_id, tools=[])
 
 # Create council with debate step
-council = Council(
+factory = CouncilFactory()
+
+council = factory.create_council(
     name="example_debate",
     steps=[
         DebateStep(
-            agents=[
+    agents=[
                 AgentWrapper(agent1, "Expert1"),
                 AgentWrapper(agent2, "Expert2")
             ],
@@ -75,7 +80,7 @@ try:
     
     print("\nAll Proposals:")
     for name, proposal in result['results']['step_0']['proposals'].items():
-        if not "_round_" in name:  # Show only initial proposals
+        if "_round_" not in name:  # Show only initial proposals
             print(f"\n{name}:")
             print(f"  {proposal[:200]}...")
             

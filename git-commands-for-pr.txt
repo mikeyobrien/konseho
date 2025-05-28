@@ -1,0 +1,39 @@
+# Git Commands to Create Pull Request
+
+## Step 1: Push the branch to GitHub
+
+```bash
+git push -u origin refactor/dependency-injection
+```
+
+## Step 2: Create PR via GitHub CLI
+
+```bash
+gh pr create \
+  --title "refactor: implement architectural improvements (Protocols, DI, God Class refactor)" \
+  --body-file pr-description.md \
+  --base master
+```
+
+## Alternative: Create PR via GitHub Web UI
+
+1. Go to https://github.com/mikeyobrien/konseho
+2. Click "Pull requests" tab
+3. Click "New pull request"
+4. Change base to "master" and compare to "refactor/dependency-injection"
+5. Use the title and description from pr-description.md
+
+## Branch Information
+
+- Branch name: `refactor/dependency-injection`
+- Base branch: `master`
+- Commits: 4 commits addressing issues #56, #52, and #53
+
+## Commit Log
+
+```
+69a45ca refactor(core): break up Council God Class into specialized components
+dee8a40 refactor: remove legacy Council instantiation  
+6e23922 feat(di): implement dependency injection for Council class
+1438750 feat(architecture): introduce protocol-based abstractions for core components
+```

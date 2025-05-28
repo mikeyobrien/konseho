@@ -1,11 +1,10 @@
 """Example of using generic MCP tools with Konseho agents."""
 
-from konseho.agents.base import create_agent, AgentWrapper
-from konseho.tools.mcp_adapter import MCPToolAdapter, adapt_mcp_tools, create_mcp_tool
-from konseho.core.council import Council
-from konseho.core.steps import ParallelStep
-from typing import List, Dict, Any
 
+from konseho.agents.base import AgentWrapper, create_agent
+from konseho.factories import CouncilFactory
+from konseho.core.steps import ParallelStep
+from konseho.tools.mcp_adapter import MCPToolAdapter, adapt_mcp_tools, create_mcp_tool
 
 # Simulated MCP tools for demonstration
 # In practice, these come from MCP servers via:
@@ -169,7 +168,9 @@ def demo_generic_mcp_adapter():
     )
     
     # Create council
-    research_council = Council(
+    factory = CouncilFactory()
+
+    research_council = factory.create_council(
         name="MCP Research Council",
         steps=[
             ParallelStep(

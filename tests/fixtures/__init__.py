@@ -1,5 +1,5 @@
 """Test fixtures and utilities."""
 
-from .mock_agents import MockAgent, MockStrandsAgent, EventCollector
+from .mock_agents import EventCollector, MockAgent, MockStrandsAgent
 
 __all__ = ["MockAgent", "MockStrandsAgent", "EventCollector"]

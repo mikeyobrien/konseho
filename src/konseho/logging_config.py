@@ -2,15 +2,13 @@
 
 import logging
 import sys
-from typing import Optional
+
 
 def configure_logging(
-    level: str = "INFO",
-    show_api_calls: bool = True,
-    api_call_format: Optional[str] = None
+    level: str = "INFO", show_api_calls: bool = True, api_call_format: str | None = None
 ):
     """Configure logging for Konseho applications.
-    
+
     Args:
         level: Logging level (DEBUG, INFO, WARNING, ERROR)
         show_api_calls: Whether to show API calls to model providers
@@ -19,11 +17,11 @@ def configure_logging(
     # Set base logging configuration
     logging.basicConfig(
         level=getattr(logging, level.upper()),
-        format='%(asctime)s - %(name)s - %(message)s',
-        datefmt='%H:%M:%S',
-        stream=sys.stdout
+        format="%(asctime)s - %(name)s - %(message)s",
+        datefmt="%H:%M:%S",
+        stream=sys.stdout,
     )
-    
+
     if show_api_calls and api_call_format:
         # Configure httpx logger with custom format
         configure_api_logging(api_call_format)
@@ -34,24 +32,24 @@ def configure_logging(
 
 def configure_api_logging(format_string: str = "simple"):
     """Configure API call logging with different formats.
-    
+
     Args:
         format_string: One of "simple", "detailed", "count"
     """
     httpx_logger = logging.getLogger("httpx")
-    
+
     class APICallFormatter(logging.Formatter):
         def __init__(self):
             super().__init__()
             self.api_call_count = 0
             self.tool_use_count = 0
-            
+
         def format(self, record):
             msg = record.getMessage()
-            
+
             if "POST https://api.anthropic.com" in msg:
                 self.api_call_count += 1
-                
+
                 if format_string == "simple":
                     return f"🤖 API Call #{self.api_call_count}"
                 elif format_string == "detailed":
@@ -63,9 +61,9 @@ def configure_api_logging(format_string: str = "simple"):
                         return f"💭 Initial Request (API Call #{self.api_call_count})"
                 elif format_string == "count":
                     return f"[{self.api_call_count}]"
-                    
+
             return super().format(record)
-    
+
     # Apply formatter to httpx handlers
     formatter = APICallFormatter()
     for handler in httpx_logger.handlers:

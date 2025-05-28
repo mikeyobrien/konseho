@@ -3,11 +3,13 @@
 
 import asyncio
 from pathlib import Path
-from konseho import Council, Context, DebateStep, ParallelStep
+
+from konseho import Context, DebateStep
+from konseho.factories import CouncilFactory
 from konseho.agents.base import AgentWrapper, create_agent
-from konseho.personas import EXPLORER_PROMPT, PLANNER_PROMPT, ANALYST_PROMPT
-from konseho.dynamic.builder import create_dynamic_council
 from konseho.core.output_manager import OutputManager
+from konseho.dynamic.builder import create_dynamic_council
+from konseho.personas import ANALYST_PROMPT, EXPLORER_PROMPT, PLANNER_PROMPT
 
 
 async def demo_basic_output_saving():
@@ -34,9 +36,13 @@ async def demo_basic_output_saving():
     )
     
     # Create council with output saving enabled
-    council = Council(
+    factory = CouncilFactory()
+
+    council = factory.create_council(
         name="PlanningCouncil",
-        steps=[DebateStep(agents=[explorer, planner], rounds=1)],
+        steps=[DebateStep(agents=[explorer, planner], rounds=1
+
+    )],
         save_outputs=True,  # Enable output saving
         output_dir="demo_outputs"  # Custom output directory
     )
@@ -121,11 +127,14 @@ async def demo_custom_metadata():
     )
     
     # Create council
-    council = Council(
+    factory = CouncilFactory()
+
+    council = factory.create_council(
         name="AnalysisCouncil",
         agents=[analyst],
         save_outputs=True,
         output_dir="demo_outputs"
+
     )
     
     # Execute task with context that includes metadata

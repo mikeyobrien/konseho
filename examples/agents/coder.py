@@ -1,6 +1,6 @@
 """Coder agent for implementing code solutions."""
 
-from typing import List, Optional
+
 from strands import Agent
 
 
@@ -12,7 +12,7 @@ class CoderAgent(Agent):
         name: str = "Coder",
         model: str = "gpt-4",
         temperature: float = 0.2,
-        tools: Optional[List[str]] = None
+        tools: list[str] | None = None
     ):
         """Initialize the Coder agent.
         
@@ -78,7 +78,7 @@ Provide the implementation with a brief explanation of design choices.
 """
         return self(implementation_prompt)
     
-    def refactor_code(self, code: str, goals: List[str]) -> str:
+    def refactor_code(self, code: str, goals: list[str]) -> str:
         """Refactor existing code based on goals.
         
         Args:
@@ -109,7 +109,7 @@ Explain the changes made and why.
 """
         return self(refactor_prompt)
     
-    def fix_bug(self, code: str, bug_description: str, error_message: Optional[str] = None) -> str:
+    def fix_bug(self, code: str, bug_description: str, error_message: str | None = None) -> str:
         """Fix a bug in the code.
         
         Args:
@@ -168,7 +168,7 @@ Aim for high code coverage with meaningful tests.
 """
         return self(test_prompt)
     
-    def optimize_performance(self, code: str, constraints: Optional[List[str]] = None) -> str:
+    def optimize_performance(self, code: str, constraints: list[str] | None = None) -> str:
         """Optimize code for performance.
         
         Args:

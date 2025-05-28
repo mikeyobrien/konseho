@@ -1,0 +1,51 @@
+COUNCIL EXECUTION REPORT
+================================================================================
+Council: legacy_council
+Task: Create a new product
+Timestamp: 2025-05-27 16:50:32
+================================================================================
+
+METADATA:
+  error_strategy: halt
+  workflow: sequential
+  num_steps: 1
+  agents: ['engineer', 'designer', 'analyst']
+
+
+STEP_0
+----------------------------------------
+
+Winner: Analyze the data
+
+Proposals:
+
+[analyst]:
+Analyze the data
+
+[engineer]:
+Build the system
+
+[designer]:
+Design the interface
+
+[analyst_round_0]:
+Analyze the data
+
+[engineer_round_0]:
+Build the system
+
+[designer_round_0]:
+Design the interface
+
+[analyst_round_1]:
+Analyze the data
+
+[engineer_round_1]:
+Build the system
+
+[designer_round_1]:
+Design the interface
+
+================================================================================
+SUMMARY DATA:
+{}

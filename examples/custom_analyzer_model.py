@@ -2,7 +2,9 @@
 """Example showing how to use a custom model for query analysis."""
 
 import asyncio
+
 from konseho.dynamic.builder import DynamicCouncilBuilder
+
 
 async def main():
     """Run example with custom analyzer model."""

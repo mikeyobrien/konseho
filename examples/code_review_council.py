@@ -2,9 +2,11 @@
 """Example: Code Review Council with multiple steps."""
 
 import asyncio
-from konseho import Council, ParallelStep, DebateStep, Context
+
+from examples.agents import CoderAgent, ExplorerAgent, ReviewerAgent
+from konseho import DebateStep, ParallelStep
+from konseho.factories import CouncilFactory
 from konseho.agents.base import AgentWrapper
-from examples.agents import ExplorerAgent, ReviewerAgent, CoderAgent
 
 
 async def main():
@@ -17,7 +19,9 @@ async def main():
     coder = AgentWrapper(CoderAgent(), name="RefactoringExpert")
     
     # Create a multi-step council
-    council = Council(
+    factory = CouncilFactory()
+
+    council = factory.create_council(
         name="CodeReviewCouncil",
         steps=[
             # Step 1: Explore the codebase in parallel
@@ -25,7 +29,7 @@ async def main():
             
             # Step 2: Debate on findings and priorities
             DebateStep(
-                agents=[reviewer1, reviewer2],
+        agents=[reviewer1, reviewer2],
                 rounds=2,
                 voting_strategy="consensus"
             ),
