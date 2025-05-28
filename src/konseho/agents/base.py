@@ -45,12 +45,18 @@ class AgentWrapper:
         Returns:
             The agent's response
         """
-        # Lock to ensure sequential output when needed
-        if not hasattr(self.__class__, '_output_lock'):
-            self.__class__._output_lock = asyncio.Lock()
+        # Create lock for the current event loop if needed
+        loop = asyncio.get_running_loop()
+        if not hasattr(self.__class__, '_output_locks'):
+            self.__class__._output_locks = {}
+        
+        if loop not in self.__class__._output_locks:
+            self.__class__._output_locks[loop] = asyncio.Lock()
+        
+        output_lock = self.__class__._output_locks[loop]
         
         if buffered:
-            async with self.__class__._output_lock:
+            async with output_lock:
                 # Capture stdout to prevent interleaved output
                 buffer = StringIO()
                 original_stdout = sys.stdout

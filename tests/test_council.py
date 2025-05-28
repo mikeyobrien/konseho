@@ -5,6 +5,7 @@ from unittest.mock import Mock
 import pytest
 
 from konseho import AgentWrapper, Context, Council, ParallelStep
+from konseho.factories import CouncilFactory
 
 
 class MockAgent:
@@ -15,13 +16,14 @@ class MockAgent:
 
 def test_council_initialization():
     """Test council can be initialized."""
-    council = Council(
+    factory = CouncilFactory()
+    council = factory.create_council(
         name="test_council",
         steps=[],
         error_strategy="halt"
     )
     assert council.name == "test_council"
-    assert council.error_strategy == "halt"
+    assert council._error_handler.error_strategy.value == "halt"
     assert isinstance(council.context, Context)
 
 
@@ -38,7 +40,8 @@ async def test_council_execution():
         AgentWrapper(agent2, "agent2")
     ])
     
-    council = Council(
+    factory = CouncilFactory()
+    council = factory.create_council(
         name="test_council",
         steps=[step]
     )

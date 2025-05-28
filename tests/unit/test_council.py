@@ -5,6 +5,7 @@ import pytest
 
 from konseho import AgentWrapper, Context, Council, DebateStep, ParallelStep
 from konseho.core.steps import Step
+from konseho.factories import CouncilFactory, CouncilDependencies
 from tests.fixtures import EventCollector, MockStrandsAgent
 
 
@@ -13,21 +14,24 @@ class TestCouncil:
     
     def test_council_initialization(self):
         """Test council initialization with various configurations."""
-        # Basic initialization
-        council = Council(name="test", steps=[])
+        # Basic initialization with factory
+        factory = CouncilFactory()
+        council = factory.create_council(name="test", steps=[])
         assert council.name == "test"
         assert council.steps == []
         assert isinstance(council.context, Context)
-        assert council.error_strategy == "halt"
+        assert council._error_handler.error_strategy.value == "halt"
         
-        # With custom context
+        # With custom context via dependencies
         custom_context = Context({"key": "value"})
-        council = Council(name="test", steps=[], context=custom_context)
+        deps = CouncilDependencies(context=custom_context)
+        factory_with_deps = CouncilFactory(dependencies=deps)
+        council = factory_with_deps.create_council(name="test", steps=[])
         assert council.context is custom_context
         
         # With error strategy
-        council = Council(name="test", steps=[], error_strategy="continue")
-        assert council.error_strategy == "continue"
+        council = factory.create_council(name="test", steps=[], error_strategy="continue")
+        assert council._error_handler.error_strategy.value == "continue"
     
     def test_council_with_steps(self):
         """Test council accepts different step types."""
@@ -37,7 +41,8 @@ class TestCouncil:
         parallel_step = ParallelStep([agent1, agent2])
         debate_step = DebateStep([agent1, agent2])
         
-        council = Council(
+        factory = CouncilFactory()
+        council = factory.create_council(
             name="multi_step",
             steps=[parallel_step, debate_step]
         )
@@ -54,7 +59,8 @@ class TestCouncil:
         agent2 = AgentWrapper(MockStrandsAgent("agent2", "Response 2"))
         
         step = ParallelStep([agent1, agent2])
-        council = Council(name="test", steps=[step])
+        factory = CouncilFactory()
+        council = factory.create_council(name="test", steps=[step])
         
         result = await council.execute("Test task")
         
@@ -70,7 +76,8 @@ class TestCouncil:
             async def execute(self, task: str, context: Context):
                 raise ValueError("Test error")
         
-        council = Council(
+        factory = CouncilFactory()
+        council = factory.create_council(
             name="test",
             steps=[FailingStep()],
             error_strategy="halt"
@@ -90,7 +97,8 @@ class TestCouncil:
         agent = AgentWrapper(MockStrandsAgent("agent", "Success"))
         success_step = ParallelStep([agent])
         
-        council = Council(
+        factory = CouncilFactory()
+        council = factory.create_council(
             name="test",
             steps=[FailingStep(), success_step],
             error_strategy="continue"
@@ -103,6 +111,7 @@ class TestCouncil:
     @pytest.mark.asyncio
     async def test_council_error_retry_strategy(self):
         """Test council retries on error with retry strategy."""
+        from konseho.core.steps import StepResult
         retry_count = 0
         
         class RetryStep(Step):
@@ -111,9 +120,10 @@ class TestCouncil:
                 retry_count += 1
                 if retry_count == 1:
                     raise ValueError("First attempt fails")
-                return {"status": "success"}
+                return StepResult(output="success", metadata={"status": "success"})
         
-        council = Council(
+        factory = CouncilFactory()
+        council = factory.create_council(
             name="test",
             steps=[RetryStep()],
             error_strategy="retry"
@@ -127,7 +137,8 @@ class TestCouncil:
         """Test synchronous run wrapper."""
         agent = AgentWrapper(MockStrandsAgent("agent"))
         step = ParallelStep([agent])
-        council = Council(name="test", steps=[step])
+        factory = CouncilFactory()
+        council = factory.create_council(name="test", steps=[step])
         
         # Should run without asyncio explicitly
         result = council.run("Test task")
@@ -138,30 +149,31 @@ class TestCouncil:
         """Test council emits proper events."""
         agent = AgentWrapper(MockStrandsAgent("agent"))
         step = ParallelStep([agent])
-        council = Council(name="test", steps=[step])
+        factory = CouncilFactory()
+        council = factory.create_council(name="test", steps=[step])
         
         # Set up event collector
         collector = EventCollector()
-        council._event_emitter.on("council:start", collector.collect)
-        council._event_emitter.on("step:start", collector.collect)
-        council._event_emitter.on("step:complete", collector.collect)
-        council._event_emitter.on("council:complete", collector.collect)
+        council._event_emitter.on("council_started", collector.collect)
+        council._event_emitter.on("step_started", collector.collect)
+        council._event_emitter.on("step_completed", collector.collect)
+        council._event_emitter.on("council_completed", collector.collect)
         
         await council.execute("Test task")
         
         # Verify event sequence
-        assert collector.has_event("council:start")
-        assert collector.has_event("step:start")
-        assert collector.has_event("step:complete")
-        assert collector.has_event("council:complete")
+        assert collector.has_event("council_started")
+        assert collector.has_event("step_started")
+        assert collector.has_event("step_completed")
+        assert collector.has_event("council_completed")
         
         # Verify event order
         sequence = collector.get_event_sequence()
         assert sequence == [
-            "council:start",
-            "step:start",
-            "step:complete",
-            "council:complete"
+            "council_started",
+            "step_started",
+            "step_completed",
+            "council_completed"
         ]
     
     @pytest.mark.asyncio
@@ -173,7 +185,8 @@ class TestCouncil:
         step1 = ParallelStep([agent1])
         step2 = ParallelStep([agent2])
         
-        council = Council(name="test", steps=[step1, step2])
+        factory = CouncilFactory()
+        council = factory.create_council(name="test", steps=[step1, step2])
         
         result = await council.execute("Test task")
         

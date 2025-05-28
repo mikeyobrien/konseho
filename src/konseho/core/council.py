@@ -94,7 +94,7 @@ class Council:
             Summary of execution results
         """
         # Execute steps through orchestrator
-        results = await self._step_orchestrator.execute_steps(task, self.context)
+        results = await self._step_orchestrator.execute_steps(task, self.context, self.name)
         
         # Get final summary
         final_result = self._prepare_final_result(task, results)

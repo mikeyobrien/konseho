@@ -35,12 +35,13 @@ class StepOrchestrator:
         self.output_manager = output_manager
         self.error_handler = error_handler or ErrorHandler()
         
-    async def execute_steps(self, task: str, context: "Context") -> List[IStepResult]:
+    async def execute_steps(self, task: str, context: "Context", council_name: str = "council") -> List[IStepResult]:
         """Execute all steps in sequence.
         
         Args:
             task: The task to execute
             context: The execution context
+            council_name: Name of the council executing the steps
             
         Returns:
             List of step results
@@ -48,12 +49,13 @@ class StepOrchestrator:
         results = []
         
         if self.event_emitter:
-            self.event_emitter.emit("council_started", {"task": task})
+            self.event_emitter.emit("council_started", {"task": task, "council": council_name})
         
         for i, step in enumerate(self.steps):
             if self.event_emitter:
                 self.event_emitter.emit("step_started", {
-                    "step": step.name,
+                    "step": i,
+                    "type": step.__class__.__name__,
                     "index": i,
                     "total": len(self.steps)
                 })
@@ -73,14 +75,16 @@ class StepOrchestrator:
             
             if self.event_emitter:
                 self.event_emitter.emit("step_completed", {
-                    "step": step.name,
-                    "result": result.output[:200] + "..." if len(result.output) > 200 else result.output
+                    "step": i,
+                    "type": step.__class__.__name__,
+                    "result": result
                 })
             
         
         if self.event_emitter:
             self.event_emitter.emit("council_completed", {
                 "task": task,
+                "council": council_name,
                 "steps_completed": len(results)
             })
         
