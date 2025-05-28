@@ -1,6 +1,23 @@
 """Tests for file operation tools."""
 
-from konseho.tools.file_ops import file_append, file_read, file_write
+import pytest
+
+from konseho.tools.file_ops import (
+    configure_allowed_directories,
+    file_append,
+    file_read,
+    file_write,
+)
+
+
+@pytest.fixture(autouse=True)
+def setup_allowed_dirs(tmp_path):
+    """Configure allowed directories for each test to use tmp_path."""
+    # Allow access to the test's tmp_path
+    configure_allowed_directories([str(tmp_path)])
+    yield
+    # Reset to empty after test
+    configure_allowed_directories([])
 
 
 class TestFileRead:
@@ -23,11 +40,18 @@ class TestFileRead:
         result = file_read(str(test_file), encoding="utf-8")
         assert result == content
 
-    def test_read_nonexistent_file(self):
+    def test_read_nonexistent_file(self, tmp_path):
         """Test reading a file that doesn't exist."""
-        result = file_read("/nonexistent/file.txt")
+        # Test within allowed directory
+        result = file_read(str(tmp_path / "nonexistent.txt"))
         assert "Error:" in result
         assert "not found" in result.lower() or "no such file" in result.lower()
+        
+        # Test outside allowed directory 
+        configure_allowed_directories(["/some/allowed/path"])
+        result = file_read("/nonexistent/file.txt")
+        assert "Error:" in result
+        assert "outside allowed directories" in result
 
     def test_read_empty_file(self, tmp_path):
         """Test reading an empty file."""
@@ -40,8 +64,7 @@ class TestFileRead:
     def test_read_large_file(self, tmp_path):
         """Test reading a larger file."""
         test_file = tmp_path / "large.txt"
-        content = "Line {}\n" * 1000
-        lines = [content.format(i) for i in range(1000)]
+        lines = [f"Line {i}\n" for i in range(1000)]
         test_file.write_text("".join(lines))
 
         result = file_read(str(test_file))
@@ -111,19 +134,24 @@ class TestFileWrite:
 
     def test_write_permission_error(self, tmp_path):
         """Test handling permission errors."""
-        # Create a read-only directory
+        # Create a read-only directory within allowed path
         read_only_dir = tmp_path / "readonly"
         read_only_dir.mkdir()
-        read_only_dir.chmod(0o444)
-
+        
+        # Create file first, then make directory read-only
         test_file = read_only_dir / "forbidden.txt"
-        result = file_write(str(test_file), "content")
+        test_file.write_text("initial")
+        
+        # Make file read-only
+        test_file.chmod(0o444)
+        
+        result = file_write(str(test_file), "new content")
 
         assert "Error:" in result
         assert "permission" in result.lower() or "access" in result.lower()
 
         # Cleanup
-        read_only_dir.chmod(0o755)
+        test_file.chmod(0o644)
 
 
 class TestFileAppend:
