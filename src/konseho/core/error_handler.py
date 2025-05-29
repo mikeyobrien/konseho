@@ -5,7 +5,7 @@ import asyncio
 import logging
 from collections.abc import Callable, Coroutine
 from enum import Enum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any  # TODO: Remove Any usage
 from konseho.core.steps import StepResult
 from konseho.protocols import IEventEmitter, IStep, IStepResult
 if TYPE_CHECKING:
@@ -26,7 +26,7 @@ class ErrorHandler:
 
     def __init__(self, error_strategy: ErrorStrategy=ErrorStrategy.HALT,
         max_retries: int=3, fallback_handler: (Callable[[Exception, IStep,
-        str, 'Context'], Coroutine[Any, Any, IStepResult]] | None)=None,
+        str, 'Context'], Coroutine[object, object, IStepResult]] | None)=None,
         event_emitter: (IEventEmitter | None)=None):
         """Initialize the ErrorHandler.
 
@@ -95,7 +95,7 @@ class ErrorHandler:
 
     async def execute_with_error_handling(self, step: IStep, task: str,
         context: 'Context', execute_fn: Callable[[IStep, str, 'Context'],
-        Coroutine[Any, Any, IStepResult]]) ->IStepResult:
+        Coroutine[object, object, IStepResult]]) ->IStepResult:
         """Execute a step with error handling applied.
 
         Args:
@@ -119,13 +119,13 @@ class ErrorHandler:
                         step.name, 'attempts': attempt + 1})
                 return result
             except Exception as e:
-                result = await self.handle_step_error(e, step, task,
+                error_result = await self.handle_step_error(e, step, task,
                     context, attempt)
-                if (result is None and self.error_strategy == ErrorStrategy
-                    .RETRY):
-                    attempt += 1
-                    continue
-                elif result is not None:
-                    return result
+                if error_result is None:
+                    if self.error_strategy == ErrorStrategy.RETRY:
+                        attempt += 1
+                        continue
+                    else:
+                        raise
                 else:
-                    raise
+                    return error_result

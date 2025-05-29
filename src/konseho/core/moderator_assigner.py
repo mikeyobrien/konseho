@@ -4,6 +4,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 from konseho.protocols import IAgent, IStep
+from konseho.agents.base import AgentWrapper
 if TYPE_CHECKING:
     from konseho.core.steps import DebateStep
 logger = logging.getLogger(__name__)
@@ -37,23 +38,39 @@ class ModeratorAssigner:
         Args:
             steps: List of steps to process
         """
+        # Import here to avoid circular imports
         from konseho.core.steps import DebateStep
-        debate_steps = [step for step in steps if isinstance(step, DebateStep)]
+        # Filter and cast debate steps
+        debate_steps: list[object] = []
+        for step in steps:
+            # Check if it's actually a DebateStep (not just IStep)
+            if step.__class__.__name__ == 'DebateStep':
+                debate_steps.append(step)
         if not debate_steps:
             logger.debug('No debate steps found, skipping moderator assignment'
                 )
             return
         logger.info(f'Assigning moderators to {len(debate_steps)} debate steps'
             )
-        for step in debate_steps:
-            if step.moderator is None:
+        for step_obj in debate_steps:
+            # Cast to access moderator attribute
+            debate_step = step_obj
+            if not hasattr(debate_step, 'moderator'):
+                continue
+            if debate_step.moderator is None:
                 if moderator := self._get_next_moderator():
-                    step.moderator = moderator
+                    # Convert IAgent to AgentWrapper if needed
+                    from konseho.agents.base import AgentWrapper
+                    if isinstance(moderator, AgentWrapper):
+                        debate_step.moderator = moderator
+                    else:
+                        # Wrap IAgent in AgentWrapper
+                        debate_step.moderator = AgentWrapper(agent=moderator, name=moderator.name)  # type: ignore[arg-type]
                     logger.debug(
-                        f'Assigned {moderator.name} as moderator for {step.name}'
+                        f'Assigned {moderator.name} as moderator'
                         )
                 else:
-                    logger.warning(f'No moderator available for {step.name}')
+                    logger.warning('No moderator available')
 
     def _get_next_moderator(self) ->(IAgent | None):
         """Get the next available moderator.
@@ -76,5 +93,10 @@ class ModeratorAssigner:
             step: The debate step
             moderator: The moderator to assign
         """
-        step.moderator = moderator
+        # Convert IAgent to AgentWrapper if needed
+        if isinstance(moderator, AgentWrapper):
+            step.moderator = moderator
+        else:
+            # Wrap IAgent in AgentWrapper
+            step.moderator = AgentWrapper(agent=moderator, name=moderator.name)  # type: ignore[arg-type]
         logger.debug(f'Assigned {moderator.name} as moderator for {step.name}')

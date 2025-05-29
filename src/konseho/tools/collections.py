@@ -4,7 +4,8 @@ from __future__ import annotations
 import glob
 import os
 import re
-from typing import Any
+from typing import Any  # TODO: Remove Any usage
+from konseho.protocols import JSON
 
 
 def search_files(pattern: str, directory: str='.') ->list[str]:
@@ -24,7 +25,7 @@ def search_files(pattern: str, directory: str='.') ->list[str]:
     return sorted(matches)
 
 
-def search_content(regex: str, file_path: str) ->list[dict[str, Any]]:
+def search_content(regex: str, file_path: str) ->list[dict[str, JSON]]:
     """Search file content with regex.
 
     Args:
@@ -39,14 +40,15 @@ def search_content(regex: str, file_path: str) ->list[dict[str, Any]]:
         with open(file_path, encoding='utf-8') as f:
             for i, line in enumerate(f, 1):
                 if re.search(regex, line):
-                    matches.append({'line': i, 'content': line.strip(),
-                        'file': file_path})
+                    match_dict: dict[str, JSON] = {'line': i, 'content': line.strip(),
+                        'file': file_path}
+                    matches.append(match_dict)
     except Exception as e:
         return [{'error': str(e)}]
     return matches
 
 
-def code_metrics(file_path: str) ->dict[str, Any]:
+def code_metrics(file_path: str) ->dict[str, JSON]:
     """Calculate basic code metrics for a file.
 
     Args:
@@ -55,23 +57,40 @@ def code_metrics(file_path: str) ->dict[str, Any]:
     Returns:
         Dictionary with metrics (lines, functions, classes, etc.)
     """
-    metrics = {'total_lines': 0, 'code_lines': 0, 'comment_lines': 0,
-        'blank_lines': 0, 'functions': 0, 'classes': 0}
+    # Use integers for counters
+    total_lines = 0
+    code_lines = 0
+    comment_lines = 0
+    blank_lines = 0
+    functions = 0
+    classes = 0
+    
     try:
         with open(file_path, encoding='utf-8') as f:
             for line in f:
-                metrics['total_lines'] += 1
+                total_lines += 1
                 stripped = line.strip()
                 if not stripped:
-                    metrics['blank_lines'] += 1
+                    blank_lines += 1
                 elif stripped.startswith('#'):
-                    metrics['comment_lines'] += 1
+                    comment_lines += 1
                 else:
-                    metrics['code_lines'] += 1
+                    code_lines += 1
                     if stripped.startswith('def '):
-                        metrics['functions'] += 1
+                        functions += 1
                     elif stripped.startswith('class '):
-                        metrics['classes'] += 1
+                        classes += 1
+        
+        # Build result dictionary
+        metrics: dict[str, JSON] = {
+            'total_lines': total_lines,
+            'code_lines': code_lines,
+            'comment_lines': comment_lines,
+            'blank_lines': blank_lines,
+            'functions': functions,
+            'classes': classes
+        }
     except Exception as e:
-        metrics['error'] = str(e)
+        metrics = {'error': str(e)}
+    
     return metrics

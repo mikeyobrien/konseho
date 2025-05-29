@@ -41,7 +41,7 @@ def get_search_provider() ->SearchProvider:
     return MockSearchProvider()
 
 
-def set_search_provider(provider: SearchProvider):
+def set_search_provider(provider: SearchProvider) -> None:
     """Set the global search provider.
 
     Args:
@@ -91,11 +91,13 @@ def _create_mcp_provider(server_name: str) ->(SearchProvider | None):
                     print(
                         f'Using real MCP search tool from {server_name}: {tool.tool_name}'
                         )
-                    return MCPSearchProvider(tool, server_name)
+                    # Cast tool to proper callable type
+                    return MCPSearchProvider(tool, server_name)  # type: ignore[arg-type]
                 elif hasattr(tool, '__name__'
                     ) and 'search' in tool.__name__.lower():
                     print(f'Using real MCP search tool from {server_name}')
-                    return MCPSearchProvider(tool, server_name)
+                    # Cast tool to proper callable type
+                    return MCPSearchProvider(tool, server_name)  # type: ignore[arg-type]
         except Exception as e:
             print(f'Could not connect to real MCP server {server_name}: {e}')
             print('Falling back to mock provider')
@@ -134,7 +136,7 @@ Note: Using mock Brave Search (real MCP server not available)."""
                 return json.dumps(results)
             return MCPSearchProvider(mock_tavily_search, 'tavily')
 
-        def generic_mcp_search(query: str, **kwargs) ->str:
+        def generic_mcp_search(query: str, **kwargs: object) ->str:
             return f"Search results for '{query}' from {server_name}"
         return MCPSearchProvider(generic_mcp_search, server_name)
     except Exception as e:
