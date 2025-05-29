@@ -92,7 +92,10 @@ def create_model_from_config(config: (ModelConfig | None)=None) -> object:
             max_tokens_val = additional_args.get('max_tokens', 2000)
             temperature_val = additional_args.get('temperature', 0.7)
             # Type narrowing
-            max_tokens = str(max_tokens_val) if not isinstance(max_tokens_val, str) else max_tokens_val
+            if isinstance(max_tokens_val, int):
+                max_tokens = max_tokens_val
+            else:
+                max_tokens = 2000
             temperature = float(temperature_val) if isinstance(temperature_val, (int, float, str)) else 0.7
             anthropic_model = AnthropicModel(client_args={'api_key': config.api_key},
                 model_id=config.model_id, max_tokens=max_tokens)
