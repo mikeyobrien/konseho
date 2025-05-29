@@ -1,7 +1,8 @@
 """Builder for creating dynamic councils based on user queries."""
 from __future__ import annotations
 
-from typing import Any
+from typing import Any  # TODO: Remove Any usage
+from konseho.protocols import JSON
 from ..core.context import Context
 from ..core.council import Council
 from .analyzer import TaskType
@@ -35,13 +36,12 @@ class DynamicCouncilBuilder:
         if self.verbose:
             print(f'\nAnalyzing query: {query[:50]}...')
             print(f'Analysis keys: {list(analysis.keys())}')
-            task_type = analysis.get('task_type', TaskType.GENERAL)
-            if hasattr(task_type, 'value'):
-                print(f'Task type: {task_type.value}')
-            else:
-                print(f'Task type: {task_type}')
-            if domains := analysis.get('domains', []):
-                print(f"Domains: {', '.join(domains)}")
+            task_type_val = analysis.get('task_type', 'general')
+            print(f'Task type: {task_type_val}')
+            domains_val = analysis.get('domains', [])
+            if isinstance(domains_val, list):
+                domain_strs = [str(d) for d in domains_val]
+                print(f"Domains: {', '.join(domain_strs)}")
             complexity = analysis.get('complexity', 'medium')
             print(f'Complexity: {complexity}')
             if 'reasoning' in analysis:
@@ -50,22 +50,36 @@ class DynamicCouncilBuilder:
             raise RuntimeError(
                 'Model analysis did not provide suggested agents. This is required for council generation.'
                 )
-        agents = self.model_factory.create_agents_from_spec(analysis[
-            'suggested_agents'])
+        suggested_agents_val = analysis.get('suggested_agents', [])
+        if not isinstance(suggested_agents_val, list):
+            raise RuntimeError('suggested_agents must be a list')
+        # Convert to proper type for model factory
+        from typing import cast
+        suggested_agents = cast(list[dict[str, object]], suggested_agents_val)
+        agents = self.model_factory.create_agents_from_spec(suggested_agents)
         if self.verbose:
             print(f'\nCreated {len(agents)} specialized agents:')
             for agent in agents:
-                spec = next((s for s in analysis['suggested_agents'] if s[
-                    'name'] == agent.name), {})
-                print(
-                    f"  - {agent.name}: {spec.get('role', 'No role specified')}"
-                    )
+                # Find matching spec
+                spec = None
+                for s in suggested_agents:
+                    if isinstance(s, dict):
+                        if s.get('name') == agent.name:
+                            spec = s
+                            break
+                if spec:
+                    role = spec.get('role', 'No role specified')
+                    print(f"  - {agent.name}: {role}")
         if 'workflow_steps' not in analysis:
             raise RuntimeError(
                 'Model analysis did not provide workflow steps. This is required for council generation.'
                 )
-        steps = self.model_planner.create_steps_from_spec(analysis[
-            'workflow_steps'], agents)
+        workflow_steps_val = analysis.get('workflow_steps', [])
+        if not isinstance(workflow_steps_val, list):
+            raise RuntimeError('workflow_steps must be a list')
+        # Convert to proper type for step planner
+        workflow_steps = cast(list[dict[str, JSON]], workflow_steps_val)
+        steps = self.model_planner.create_steps_from_spec(workflow_steps, agents)
         if self.verbose:
             print(f'\nPlanned {len(steps)} steps:')
             for i, step in enumerate(steps):
@@ -77,13 +91,16 @@ class DynamicCouncilBuilder:
         context.add('original_query', query)
         from ..factories import CouncilFactory
         factory = CouncilFactory()
-        council = factory.create_council(name='DynamicCouncil', steps=steps,
+        # Convert steps to IStep for factory
+        from konseho.protocols import IStep
+        isteps = cast(list[IStep], steps)
+        council = factory.create_council(name='DynamicCouncil', steps=isteps,
             save_outputs=save_outputs, output_dir=output_dir)
         council.context.add('query_analysis', analysis)
         council.context.add('original_query', query)
         return council
 
-    def build_from_config(self, config: dict[str, Any]) ->Council:
+    def build_from_config(self, config: dict[str, object]) ->Council:
         """Build a council from explicit configuration.
 
         This method requires async execution for model-based analysis.

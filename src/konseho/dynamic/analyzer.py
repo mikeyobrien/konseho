@@ -3,7 +3,8 @@ from __future__ import annotations
 
 import re
 from enum import Enum
-from typing import Any
+from typing import Any  # TODO: Remove Any usage
+from konseho.protocols import JSON
 
 
 class TaskType(Enum):
@@ -21,7 +22,7 @@ class TaskType(Enum):
 class QueryAnalyzer:
     """Analyzes user queries to determine optimal council configuration."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.task_patterns = {TaskType.RESEARCH: ['\\bresearch\\b',
             '\\bfind out\\b', '\\bexplore\\b', '\\binvestigate\\b',
             '\\bgather information\\b', '\\blearn about\\b', '\\bstudy\\b'],
@@ -48,7 +49,7 @@ class QueryAnalyzer:
             'scientific': ['research', 'data', 'analysis', 'hypothesis',
             'experiment']}
 
-    def analyze(self, query: str) ->dict[str, Any]:
+    def analyze(self, query: str) ->dict[str, JSON]:
         """Analyze a query and return configuration suggestions."""
         query_lower = query.lower()
         task_type = self._detect_task_type(query_lower)
@@ -57,10 +58,18 @@ class QueryAnalyzer:
         agent_count = self._suggest_agent_count(task_type, complexity, domains)
         needs_parallel = self._needs_parallel_work(task_type, domains)
         needs_debate = self._needs_debate(task_type, query_lower)
-        return {'task_type': task_type, 'domains': domains, 'complexity':
-            complexity, 'suggested_agent_count': agent_count,
-            'needs_parallel': needs_parallel, 'needs_debate': needs_debate,
-            'query': query}
+        # Convert to JSON-compatible types
+        from typing import cast
+        result: dict[str, JSON] = {
+            'task_type': task_type.value,
+            'domains': cast(JSON, domains),  # list[str] is JSON-compatible
+            'complexity': complexity,
+            'suggested_agent_count': agent_count,
+            'needs_parallel': needs_parallel,
+            'needs_debate': needs_debate,
+            'query': query
+        }
+        return result
 
     def _detect_task_type(self, query: str) ->TaskType:
         """Detect the primary task type from the query."""

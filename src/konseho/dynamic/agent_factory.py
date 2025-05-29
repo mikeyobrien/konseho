@@ -1,7 +1,8 @@
 """Factory for creating agents with dynamic personas based on task requirements."""
 from __future__ import annotations
 
-from typing import Any
+from typing import Any  # TODO: Remove Any usage
+from konseho.protocols import JSON
 from ..agents.base import AgentWrapper, create_agent
 from ..dynamic.analyzer import TaskType
 
@@ -9,7 +10,7 @@ from ..dynamic.analyzer import TaskType
 class DynamicAgentFactory:
     """Creates agents with personas tailored to specific tasks."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.persona_templates = {TaskType.RESEARCH: [{'name':
             'Research Lead', 'persona':
             'You are a senior researcher with expertise in systematic investigation and information synthesis. You excel at identifying credible sources, extracting key insights, and presenting findings clearly.'
@@ -66,11 +67,26 @@ class DynamicAgentFactory:
             'general':
             'broad interdisciplinary knowledge and holistic thinking'}
 
-    def create_agents(self, analysis: dict[str, Any]) ->list[AgentWrapper]:
+    def create_agents(self, analysis: dict[str, JSON]) ->list[AgentWrapper]:
         """Create agents based on query analysis results."""
-        task_type = analysis['task_type']
-        domains = analysis['domains']
-        agent_count = analysis['suggested_agent_count']
+        # Extract values with type narrowing
+        task_type_val = analysis.get('task_type', 'general')
+        if isinstance(task_type_val, str):
+            task_type = TaskType(task_type_val)
+        else:
+            task_type = TaskType.GENERAL
+        
+        domains_val = analysis.get('domains', [])
+        if isinstance(domains_val, list):
+            domains = [str(d) for d in domains_val if isinstance(d, str)]
+        else:
+            domains = []
+        
+        agent_count_val = analysis.get('suggested_agent_count', 3)
+        if isinstance(agent_count_val, int):
+            agent_count = agent_count_val
+        else:
+            agent_count = 3
         base_personas = self._get_base_personas(task_type, agent_count)
         customized_personas = self._customize_for_domains(base_personas,
             domains)

@@ -4,7 +4,8 @@ from __future__ import annotations
 import hashlib
 import os
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any  # TODO: Remove Any usage
+from konseho.protocols import JSON
 
 
 class SearchProvider(ABC):
@@ -87,7 +88,7 @@ class MockSearchProvider(SearchProvider):
 
 
 def web_search(query: str, max_results: int=10, provider: (SearchProvider |
-    None)=None) ->dict[str, Any]:
+    None)=None) ->dict[str, JSON]:
     """Search the web using configured provider.
 
     Args:
@@ -129,14 +130,15 @@ def web_search(query: str, max_results: int=10, provider: (SearchProvider |
         note = None
     try:
         results = provider.search(query.strip(), max_results)
-        response = {'query': query, 'provider': provider.name, 'results':
-            results}
+        from typing import cast
+        response: dict[str, JSON] = {'query': query, 'provider': provider.name, 'results':
+            cast(JSON, results)}
         if note:
             response['note'] = note
         return response
     except Exception as e:
-        return {'query': query, 'provider': provider.name if provider else
-            'unknown', 'error': f'Search failed: {str(e)}'}
+        provider_name = provider.name
+        return {'query': query, 'provider': provider_name, 'error': f'Search failed: {str(e)}'}
 
 
 """

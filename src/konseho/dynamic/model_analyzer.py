@@ -3,7 +3,8 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import Any
+from typing import Any  # TODO: Remove Any usage
+from konseho.protocols import JSON
 from ..agents.base import create_agent
 from .analyzer import TaskType
 ANALYZER_PROMPT = """You are a query analyzer for a multi-agent council system. Your job is to analyze user queries and determine the optimal configuration for a council of AI agents to solve the task.
@@ -108,7 +109,7 @@ class ModelBasedAnalyzer:
             system_prompt=prompt_with_registry, temperature=temperature,
             model=self.model)
 
-    async def analyze(self, query: str) ->dict[str, Any]:
+    async def analyze(self, query: str) ->dict[str, JSON]:
         """Analyze a query using the LLM.
 
         Args:
@@ -145,7 +146,9 @@ class ModelBasedAnalyzer:
             analysis['needs_debate'] = any(step['type'] == 'debate' for
                 step in analysis.get('workflow_steps', []))
             analysis['query'] = query
-            return analysis
+            # Convert to JSON-compatible dict
+            from typing import cast
+            return cast(dict[str, JSON], analysis)
         except Exception as e:
             print(f'\n❌ Model analysis failed: {e}')
             print('\nModel-based analysis is required but failed.')
@@ -176,7 +179,7 @@ class ModelAnalyzer:
         self.model_analyzer = ModelBasedAnalyzer(model=model, temperature=
             temperature)
 
-    async def analyze(self, query: str) ->dict[str, Any]:
+    async def analyze(self, query: str) ->dict[str, JSON]:
         """Analyze query using model-based analysis.
 
         Model-based analysis is required. There is no fallback.
