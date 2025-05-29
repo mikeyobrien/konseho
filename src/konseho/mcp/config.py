@@ -1,47 +1,65 @@
 """MCP configuration management compatible with mcp.json format."""
+from __future__ import annotations
 
 import json
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
-
+from konseho.protocols import JSON
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class MCPServerConfig:
     """Configuration for a single MCP server."""
-
     command: str
     args: list[str] = field(default_factory=list)
     env: dict[str, str] = field(default_factory=dict)
     enabled: bool = True
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "MCPServerConfig":
+    def from_dict(cls, data: dict[str, JSON]) ->'MCPServerConfig':
         """Create from dictionary configuration."""
-        return cls(
-            command=data.get("command", ""),
-            args=data.get("args", []),
-            env=data.get("env", {}),
-            enabled=data.get("enabled", True),
-        )
+        command = data.get('command', '')
+        args = data.get('args', [])
+        env = data.get('env', {})
+        enabled = data.get('enabled', True)
+        
+        # Type narrowing
+        if not isinstance(command, str):
+            command = ''
+        # Process args
+        str_args: list[str] = []
+        if isinstance(args, list):
+            for arg in args:
+                if isinstance(arg, str):
+                    str_args.append(arg)
+        
+        # Process env
+        str_env: dict[str, str] = {}
+        if isinstance(env, dict):
+            for k, v in env.items():
+                if isinstance(v, str):
+                    str_env[k] = v
+        if not isinstance(enabled, bool):
+            enabled = True
+            
+        return cls(command=command, args=str_args, env=str_env, enabled=enabled)
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) ->dict[str, JSON]:
         """Convert to dictionary for serialization."""
-        return {
-            "command": self.command,
-            "args": self.args,
-            "env": self.env,
-            "enabled": self.enabled,
-        }
+        from typing import cast
+        args: JSON = cast(JSON, self.args)
+        env: JSON = cast(JSON, self.env)
+        return {'command': self.command, 'args': args, 'env': env,
+            'enabled': self.enabled}
 
 
 class MCPConfigManager:
     """Manage MCP server configurations compatible with mcp.json format."""
 
-    def __init__(self, config_path: str | Path | None = None):
+    def __init__(self, config_path: (str | Path | None)=None):
         """Initialize MCP configuration manager.
 
         Args:
@@ -51,7 +69,7 @@ class MCPConfigManager:
         self.servers: dict[str, MCPServerConfig] = {}
         self._load_config()
 
-    def _find_config_path(self, config_path: str | Path | None = None) -> Path:
+    def _find_config_path(self, config_path: (str | Path | None)=None) ->Path:
         """Find the MCP configuration file.
 
         Searches in order:
@@ -62,94 +80,69 @@ class MCPConfigManager:
         """
         if config_path:
             return Path(config_path)
-
-        # Search locations (compatible with Cline/Claude Code)
-        search_paths = [
-            Path.cwd() / "mcp.json",
-            Path.cwd() / ".mcp" / "mcp.json",
-            Path.cwd() / "config" / "mcp.json",
-            Path.home() / ".config" / "konseho" / "mcp.json",
-            Path.home() / ".mcp" / "mcp.json",
-        ]
-
+        search_paths = [Path.cwd() / 'mcp.json', Path.cwd() / '.mcp' /
+            'mcp.json', Path.cwd() / 'config' / 'mcp.json', Path.home() /
+            '.config' / 'konseho' / 'mcp.json', Path.home() / '.mcp' /
+            'mcp.json']
         for path in search_paths:
             if path.exists():
-                logger.info(f"Found MCP config at: {path}")
+                logger.info(f'Found MCP config at: {path}')
                 return path
-
-        # Default to project root
-        default_path = Path.cwd() / "mcp.json"
-        logger.info(f"No MCP config found, using default: {default_path}")
+        default_path = Path.cwd() / 'mcp.json'
+        logger.info(f'No MCP config found, using default: {default_path}')
         return default_path
 
-    def _load_config(self):
+    def _load_config(self) -> None:
         """Load configuration from mcp.json file."""
         if not self.config_path.exists():
-            logger.debug(f"No config file at {self.config_path}")
+            logger.debug(f'No config file at {self.config_path}')
             return
-
         try:
             with open(self.config_path) as f:
                 data = json.load(f)
-
-            # Handle both formats:
-            # Format 1: {"servers": {"name": {...}}}
-            # Format 2: {"mcpServers": {"name": {...}}}
-            servers_data = data.get("servers", data.get("mcpServers", {}))
-
+            servers_data = data.get('servers', data.get('mcpServers', {}))
             for name, config in servers_data.items():
                 self.servers[name] = MCPServerConfig.from_dict(config)
-
-            logger.info(f"Loaded {len(self.servers)} MCP servers from config")
-
+            logger.info(f'Loaded {len(self.servers)} MCP servers from config')
         except Exception as e:
-            logger.error(f"Failed to load MCP config: {e}")
+            logger.error(f'Failed to load MCP config: {e}')
 
-    def save_config(self):
+    def save_config(self) -> None:
         """Save current configuration to mcp.json file."""
-        # Ensure directory exists
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
-
-        # Build config data
-        data = {
-            "mcpServers": {
-                name: server.to_dict() for name, server in self.servers.items()
-            }
-        }
-
-        # Write config
-        with open(self.config_path, "w") as f:
+        data = {'mcpServers': {name: server.to_dict() for name, server in
+            self.servers.items()}}
+        with open(self.config_path, 'w') as f:
             json.dump(data, f, indent=2)
+        logger.info(f'Saved MCP config to {self.config_path}')
 
-        logger.info(f"Saved MCP config to {self.config_path}")
-
-    def add_server(self, name: str, config: MCPServerConfig):
+    def add_server(self, name: str, config: MCPServerConfig) -> None:
         """Add or update an MCP server configuration."""
         self.servers[name] = config
-        logger.info(f"Added MCP server: {name}")
+        logger.info(f'Added MCP server: {name}')
 
-    def remove_server(self, name: str) -> bool:
+    def remove_server(self, name: str) ->bool:
         """Remove an MCP server configuration."""
         if name in self.servers:
             del self.servers[name]
-            logger.info(f"Removed MCP server: {name}")
+            logger.info(f'Removed MCP server: {name}')
             return True
         return False
 
-    def get_server(self, name: str) -> MCPServerConfig | None:
+    def get_server(self, name: str) ->(MCPServerConfig | None):
         """Get configuration for a specific server."""
         return self.servers.get(name)
 
-    def list_servers(self) -> list[str]:
+    def list_servers(self) ->list[str]:
         """List all configured server names."""
         return list(self.servers.keys())
 
-    def get_enabled_servers(self) -> dict[str, MCPServerConfig]:
+    def get_enabled_servers(self) ->dict[str, MCPServerConfig]:
         """Get all enabled server configurations."""
-        return {name: config for name, config in self.servers.items() if config.enabled}
+        return {name: config for name, config in self.servers.items() if
+            config.enabled}
 
 
-# Example mcp.json format:
 """
 {
   "mcpServers": {

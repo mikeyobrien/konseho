@@ -5,5 +5,6 @@
       "Bash(useradd:*)"
     ],
     "deny": []
-  }
+  },
+  "enableAllProjectMcpServers": false
 }

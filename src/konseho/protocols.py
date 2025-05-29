@@ -7,8 +7,21 @@ should implement. Using protocols provides:
 - Clear contracts for implementations
 - Runtime type checking support
 """
+from __future__ import annotations
 
-from typing import Any, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, TypeAlias, TypeVar, Union, runtime_checkable
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
+# Type aliases for common types
+# We use Any here to avoid pydantic recursion issues while maintaining type safety
+# The explicit-any error is disabled for this specific case  
+JSON: TypeAlias = Union[dict[str, Any], list[Any], str, int, float, bool, None]  # type: ignore[explicit-any]
+AgentCapabilities: TypeAlias = dict[str, str | list[str] | bool | int]
+StepMetadata: TypeAlias = dict[str, str | int | float | bool | list[str] | dict[str, str]]
+SearchResult: TypeAlias = dict[str, str | list[str] | float | int]
+ToolResult = TypeVar("ToolResult", str, dict[str, str], list[str], bool, int, float)
 
 
 @runtime_checkable
@@ -16,16 +29,16 @@ class IAgent(Protocol):
     """Core agent interface for all agent implementations."""
 
     @property
-    def name(self) -> str:
+    def name(self) ->str:
         """Agent's unique name."""
         ...
 
     @property
-    def model(self) -> str:
+    def model(self) ->str:
         """Model identifier (e.g., 'claude-3-5-sonnet-20241022')."""
         ...
 
-    async def work_on(self, task: str) -> str:
+    async def work_on(self, task: str) ->str:
         """Process a task and return result.
 
         Args:
@@ -36,7 +49,7 @@ class IAgent(Protocol):
         """
         ...
 
-    def get_capabilities(self) -> dict[str, Any]:
+    def get_capabilities(self) ->AgentCapabilities:
         """Return agent capabilities and metadata.
 
         Returns:
@@ -49,7 +62,7 @@ class IAgent(Protocol):
 class IToolAgent(IAgent, Protocol):
     """Agent with tool execution capabilities."""
 
-    async def work_on_with_tools(self, task: str, tools: list["ITool"]) -> str:
+    async def work_on_with_tools(self, task: str, tools: list['ITool']) ->str:
         """Process task using provided tools.
 
         Args:
@@ -67,11 +80,11 @@ class IStep(Protocol):
     """Step execution interface for workflow steps."""
 
     @property
-    def name(self) -> str:
+    def name(self) ->str:
         """Step name for identification."""
         ...
 
-    async def execute(self, task: str, context: "IContext") -> "IStepResult":
+    async def execute(self, task: str, context: 'IContext') ->'IStepResult':
         """Execute the step with given task and context.
 
         Args:
@@ -83,7 +96,7 @@ class IStep(Protocol):
         """
         ...
 
-    def validate(self) -> list[str]:
+    def validate(self) ->list[str]:
         """Validate step configuration.
 
         Returns:
@@ -97,17 +110,17 @@ class IStepResult(Protocol):
     """Result from step execution."""
 
     @property
-    def output(self) -> str:
+    def output(self) ->str:
         """Main output from the step."""
         ...
 
     @property
-    def metadata(self) -> dict[str, Any]:
+    def metadata(self) ->StepMetadata:
         """Additional metadata about the execution."""
         ...
 
     @property
-    def success(self) -> bool:
+    def success(self) ->bool:
         """Whether the step executed successfully."""
         ...
 
@@ -116,7 +129,7 @@ class IStepResult(Protocol):
 class IContext(Protocol):
     """Context management interface for sharing state."""
 
-    def add(self, key: str, value: Any) -> None:
+    def add(self, key: str, value: JSON) ->None:
         """Add a key-value pair to context.
 
         Args:
@@ -125,7 +138,7 @@ class IContext(Protocol):
         """
         ...
 
-    def get(self, key: str, default: Any = None) -> Any:
+    def get(self, key: str, default: JSON=None) ->JSON:
         """Get value from context.
 
         Args:
@@ -137,7 +150,7 @@ class IContext(Protocol):
         """
         ...
 
-    def update(self, data: dict[str, Any]) -> None:
+    def update(self, data: dict[str, JSON]) ->None:
         """Update context with multiple key-value pairs.
 
         Args:
@@ -145,7 +158,7 @@ class IContext(Protocol):
         """
         ...
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) ->dict[str, JSON]:
         """Export context as dictionary.
 
         Returns:
@@ -153,7 +166,7 @@ class IContext(Protocol):
         """
         ...
 
-    def get_size(self) -> int:
+    def get_size(self) ->int:
         """Get context size in bytes/tokens.
 
         Returns:
@@ -161,7 +174,7 @@ class IContext(Protocol):
         """
         ...
 
-    def clear(self) -> None:
+    def clear(self) ->None:
         """Clear all context data."""
         ...
 
@@ -171,16 +184,16 @@ class ITool(Protocol):
     """Tool interface for agent capabilities."""
 
     @property
-    def name(self) -> str:
+    def name(self) ->str:
         """Tool name for identification."""
         ...
 
     @property
-    def description(self) -> str:
+    def description(self) ->str:
         """Human-readable tool description."""
         ...
 
-    async def execute(self, **kwargs) -> Any:
+    async def execute(self, **kwargs: JSON) ->ToolResult:
         """Execute tool with parameters.
 
         Args:
@@ -196,7 +209,7 @@ class ITool(Protocol):
 class IModelProvider(Protocol):
     """Interface for model/agent providers."""
 
-    async def create_agent(self, name: str, model: str, **kwargs) -> IAgent:
+    async def create_agent(self, name: str, model: str, **kwargs: JSON) ->IAgent:
         """Create an agent instance.
 
         Args:
@@ -209,7 +222,7 @@ class IModelProvider(Protocol):
         """
         ...
 
-    async def list_models(self) -> list[str]:
+    async def list_models(self) ->list[str]:
         """List available models.
 
         Returns:
@@ -217,7 +230,7 @@ class IModelProvider(Protocol):
         """
         ...
 
-    def supports_streaming(self) -> bool:
+    def supports_streaming(self) ->bool:
         """Check if provider supports streaming responses.
 
         Returns:
@@ -230,7 +243,7 @@ class IModelProvider(Protocol):
 class ISearchProvider(Protocol):
     """Interface for search providers."""
 
-    async def search(self, query: str, max_results: int = 10) -> list[dict[str, Any]]:
+    async def search(self, query: str, max_results: int=10) ->list[SearchResult]:
         """Execute a search query.
 
         Args:
@@ -243,11 +256,11 @@ class ISearchProvider(Protocol):
         ...
 
     @property
-    def name(self) -> str:
+    def name(self) ->str:
         """Provider name."""
         ...
 
-    def is_available(self) -> bool:
+    def is_available(self) ->bool:
         """Check if provider is configured and available.
 
         Returns:
@@ -260,9 +273,8 @@ class ISearchProvider(Protocol):
 class IExecutor(Protocol):
     """Interface for step executors."""
 
-    async def execute_step(
-        self, step: IStep, task: str, context: IContext
-    ) -> IStepResult:
+    async def execute_step(self, step: IStep, task: str, context: IContext
+        ) ->IStepResult:
         """Execute a single step.
 
         Args:
@@ -281,16 +293,16 @@ class ICouncil(Protocol):
     """Interface for council orchestrators."""
 
     @property
-    def agents(self) -> list[IAgent]:
+    def agents(self) ->list[IAgent]:
         """List of council agents."""
         ...
 
     @property
-    def steps(self) -> list[IStep]:
+    def steps(self) ->list[IStep]:
         """List of execution steps."""
         ...
 
-    async def convene(self, task: str) -> str:
+    async def convene(self, task: str) ->str:
         """Execute the council workflow.
 
         Args:
@@ -306,7 +318,7 @@ class ICouncil(Protocol):
 class IEventEmitter(Protocol):
     """Interface for event emission system."""
 
-    def on(self, event: str, handler: Any) -> None:
+    def on(self, event: str, handler: Callable[[str, JSON], None] | Callable[[str, JSON], Awaitable[None]]) -> None:
         """Register an event handler.
 
         Args:
@@ -315,7 +327,7 @@ class IEventEmitter(Protocol):
         """
         ...
 
-    def emit(self, event: str, data: Any = None) -> None:
+    def emit(self, event: str, data: JSON=None) ->None:
         """Emit an event with optional data.
 
         Args:
@@ -324,7 +336,7 @@ class IEventEmitter(Protocol):
         """
         ...
 
-    async def emit_async(self, event: str, data: Any = None) -> None:
+    async def emit_async(self, event: str, data: JSON=None) ->None:
         """Emit an event asynchronously.
 
         Args:
@@ -338,13 +350,8 @@ class IEventEmitter(Protocol):
 class IOutputManager(Protocol):
     """Interface for output management."""
 
-    def save_formatted_output(
-        self,
-        task: str,
-        result: Any,
-        council_name: str = "council",
-        metadata: dict[str, Any] | None = None,
-    ) -> Any:
+    def save_formatted_output(self, task: str, result: JSON, council_name:
+        str='council', metadata: (dict[str, JSON] | None)=None) ->str:
         """Save council output in formatted form.
 
         Args:
@@ -358,7 +365,7 @@ class IOutputManager(Protocol):
         """
         ...
 
-    def clean_old_outputs(self, max_age_days: int = 7) -> int:
+    def clean_old_outputs(self, max_age_days: int=7) ->int:
         """Clean up old output files.
 
         Args:
@@ -370,7 +377,6 @@ class IOutputManager(Protocol):
         ...
 
 
-# Type aliases for migration support
-AgentLike = IAgent | Any  # Any allows existing Agent class
-StepLike = IStep | Any  # Any allows existing Step class
-ContextLike = IContext | Any  # Any allows existing Context class
+AgentLike = IAgent
+StepLike = IStep
+ContextLike = IContext

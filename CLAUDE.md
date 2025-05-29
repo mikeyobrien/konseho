@@ -41,6 +41,28 @@ uv run mypy src
 
 # Run all quality checks
 uv run black src tests && uv run ruff check src tests && uv run mypy src && uv run pytest
+
+# Run pre-commit hooks manually
+uv run pre-commit run --all-files
+
+# Install pre-commit hooks (one-time setup)
+uv run pre-commit install
+```
+
+### Code Quality Tools
+
+The project uses several pre-commit hooks to ensure code quality:
+
+1. **Black** - Automatic code formatting (configured in pyproject.toml)
+2. **Ruff** - Fast Python linter with auto-fix capabilities
+3. **mypy** - Static type checking with strict configuration
+4. **Bandit** - Security vulnerability scanning
+5. **Safety** - Dependency vulnerability checking
+6. **pyupgrade** - Automatically upgrade syntax for newer Python versions
+
+These hooks run automatically on every commit. To bypass temporarily (not recommended):
+```bash
+git commit --no-verify -m "your message"
 ```
 
 ## Architecture Overview
@@ -121,9 +143,154 @@ class Step:
         # 200 lines of mixed concerns
 ```
 
+## Idiomatic Python & Type Hints
+
+### Python Style Guidelines
+
+**Use Pythonic idioms and patterns:**
+```python
+# GOOD: Pythonic approaches
+# List comprehensions for simple transformations
+results = [agent.name for agent in agents if agent.is_active]
+
+# Generator expressions for memory efficiency
+total = sum(len(result) for result in results)
+
+# Context managers for resource handling
+async with council.session() as session:
+    result = await session.execute(task)
+
+# Enumerate for index access
+for i, agent in enumerate(agents):
+    print(f"Agent {i}: {agent.name}")
+
+# BAD: Non-pythonic patterns
+# Manual index tracking
+i = 0
+for agent in agents:
+    print(f"Agent {i}: {agent.name}")
+    i += 1
+```
+
+**Prefer composition over inheritance:**
+```python
+# GOOD: Composition with clear interfaces
+class Council:
+    def __init__(self, executor: Executor, context: Context):
+        self._executor = executor
+        self._context = context
+
+# BAD: Deep inheritance hierarchies
+class AdvancedDebateCouncil(DebateCouncil, ParallelCouncil, BaseCouncil):
+    pass
+```
+
+### Type Hint Requirements
+
+**Always use type hints for:**
+- All function/method parameters and return values
+- Class attributes
+- Module-level variables
+
+**Type hint examples:**
+```python
+from typing import List, Dict, Optional, Union, TypeVar, Protocol
+from collections.abc import Sequence, Mapping
+
+# Basic types
+def process_task(task: str, priority: int = 1) -> bool:
+    return True
+
+# Collections with generics
+async def gather_results(agents: List[Agent]) -> Dict[str, str]:
+    return {agent.name: await agent.work_on(task) for agent in agents}
+
+# Optional types
+def find_agent(name: str) -> Optional[Agent]:
+    return agents.get(name)
+
+# Union types (prefer | operator for Python 3.10+)
+def parse_input(data: str | bytes) -> dict:
+    return json.loads(data)
+
+# Generic type variables
+T = TypeVar('T')
+def first_or_none(items: Sequence[T]) -> Optional[T]:
+    return items[0] if items else None
+
+# Protocol for structural typing
+class Workable(Protocol):
+    async def work_on(self, task: str) -> str: ...
+
+# Complex nested types
+ConfigDict = Dict[str, Union[str, int, Dict[str, str]]]
+```
+
+**Type hint constraints:**
+- Use `from __future__ import annotations` for forward references
+- Prefer `list[T]` over `List[T]` in Python 3.9+
+- Use `TypeAlias` for complex repeated types
+- Avoid `Any` unless absolutely necessary
+- Use `Protocol` for duck typing interfaces
+- Use `TypedDict` for structured dictionaries
+
+```python
+from __future__ import annotations
+from typing import TypeAlias, TypedDict, Protocol
+
+# Type aliases for clarity
+AgentResults: TypeAlias = dict[str, str]
+
+# Typed dictionaries for structured data
+class StepConfig(TypedDict):
+    name: str
+    timeout: int
+    retry_count: int
+
+# Protocols for interfaces
+class Executable(Protocol):
+    async def execute(self, task: str, context: Context) -> Result: ...
+```
+
 ## Testing Approach
 
 - Use mock Strands agents for unit tests to avoid external dependencies
 - Create integration tests with simple agents for end-to-end validation
 - Test async execution patterns thoroughly
 - Benchmark parallel execution performance
+
+## Claude 4 Best Practices for Tool Calling & Agentic Coding
+
+### Parallel Tool Execution
+For maximum efficiency, whenever you need to perform multiple independent operations, invoke all relevant tools simultaneously rather than sequentially. This is especially important for:
+- Running multiple tests or checks
+- Searching across different files or patterns
+- Fetching data from multiple sources
+- Performing batch file operations
+
+Example:
+```python
+# When implementing features that require multiple file operations:
+# DO: Execute independent reads/searches in parallel
+# DON'T: Chain operations unnecessarily
+```
+
+### File Management
+- Minimize temporary file creation during development tasks
+- If you create any temporary new files, scripts, or helper files for iteration, clean up these files by removing them at the end of the task
+- Prefer in-memory operations when possible
+- Use existing test fixtures rather than creating new temporary test files
+
+### Thoughtful Tool Usage
+After receiving tool results, carefully reflect on their quality and determine optimal next steps before proceeding. This helps:
+- Avoid redundant operations
+- Choose the most efficient approach
+- Maintain clean project structure
+- Ensure all changes align with project patterns
+
+### Context-Aware Development
+When working with the Konseho codebase:
+- Leverage the event-driven architecture for parallel agent execution
+- Use the existing step patterns (DebateStep, ParallelStep, SplitStep) effectively
+- Maintain the simplicity goals (<10 lines for basic council creation)
+- Follow the established async/await patterns throughout

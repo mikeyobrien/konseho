@@ -1,15 +1,13 @@
 """File operation tools for agents."""
+from __future__ import annotations
 
 import os
 from pathlib import Path
-
 from konseho.tools.diff_utils import generate_inline_diff, summarize_changes
-
-# Default allowed directories - can be configured via environment or at runtime
 _ALLOWED_DIRS: list[str] = []
 
 
-def configure_allowed_directories(directories: list[str]) -> None:
+def configure_allowed_directories(directories: list[str]) ->None:
     """Configure allowed directories for file operations.
     
     Args:
@@ -20,19 +18,18 @@ def configure_allowed_directories(directories: list[str]) -> None:
     _ALLOWED_DIRS = [os.path.abspath(d) for d in directories if d]
 
 
-def get_allowed_directories() -> list[str]:
+def get_allowed_directories() ->list[str]:
     """Get the current list of allowed directories.
     
     Returns:
         List of allowed directory paths
     """
-    # If no directories configured, default to current working directory
     if not _ALLOWED_DIRS:
         return [os.getcwd()]
     return _ALLOWED_DIRS.copy()
 
 
-def validate_file_path(file_path: str) -> tuple[bool, str, str]:
+def validate_file_path(file_path: str) ->tuple[bool, str, str]:
     """Validate that a file path is within allowed directories.
     
     Args:
@@ -45,30 +42,20 @@ def validate_file_path(file_path: str) -> tuple[bool, str, str]:
         - error_message: Error description (empty string if valid)
     """
     try:
-        # Resolve to absolute path, following symlinks
         abs_path = os.path.abspath(os.path.realpath(file_path))
-        
-        # Get allowed directories
         allowed_dirs = get_allowed_directories()
-        
-        # Check if path is within any allowed directory
         for allowed_dir in allowed_dirs:
             allowed_abs = os.path.abspath(os.path.realpath(allowed_dir))
-            # Use Path for reliable path comparison
             if Path(abs_path).is_relative_to(Path(allowed_abs)):
-                return True, abs_path, ""
-        
-        # Path is outside allowed directories
-        return False, "", (
-            f"Path '{file_path}' is outside allowed directories. "
-            f"Allowed: {', '.join(allowed_dirs)}"
-        )
-        
+                return True, abs_path, ''
+        return (False, '',
+            f"Path '{file_path}' is outside allowed directories. Allowed: {', '.join(allowed_dirs)}"
+            )
     except Exception as e:
-        return False, "", f"Invalid path '{file_path}': {str(e)}"
+        return False, '', f"Invalid path '{file_path}': {str(e)}"
 
 
-def file_read(path: str, encoding: str = "utf-8") -> str:
+def file_read(path: str, encoding: str='utf-8') ->str:
     """Read contents of a file.
 
     Args:
@@ -79,39 +66,28 @@ def file_read(path: str, encoding: str = "utf-8") -> str:
         File contents as string, or error message if failed
     """
     try:
-        # Validate the path first
         is_valid, resolved_path, error_msg = validate_file_path(path)
         if not is_valid:
-            return f"Error: {error_msg}"
-        
-        # Check if file exists
+            return f'Error: {error_msg}'
         if not os.path.exists(resolved_path):
-            return f"Error: File not found: {path}"
-
-        # Try to read the file
+            return f'Error: File not found: {path}'
         with open(resolved_path, encoding=encoding) as f:
             content = f.read()
-
-        # Check for null bytes which indicate binary content
-        if "\x00" in content:
-            return "Error: File appears to be binary. Cannot read as text."
-
+        if '\x00' in content:
+            return 'Error: File appears to be binary. Cannot read as text.'
         return content
-
     except UnicodeDecodeError:
         return (
-            f"Error: Unable to decode file with {encoding} encoding. "
-            "File may be binary."
-        )
+            f'Error: Unable to decode file with {encoding} encoding. File may be binary.'
+            )
     except PermissionError:
-        return f"Error: Permission denied reading file: {path}"
+        return f'Error: Permission denied reading file: {path}'
     except Exception as e:
-        return f"Error: Failed to read file: {str(e)}"
+        return f'Error: Failed to read file: {str(e)}'
 
 
-def file_write(
-    path: str, content: str, encoding: str = "utf-8", show_diff: bool = True
-) -> str:
+def file_write(path: str, content: str, encoding: str='utf-8', show_diff:
+    bool=True) ->str:
     """Write content to a file, creating directories if needed.
 
     Args:
@@ -124,63 +100,46 @@ def file_write(
         Success message with optional diff, or error message if failed
     """
     try:
-        # Validate the path first
         is_valid, resolved_path, error_msg = validate_file_path(path)
         if not is_valid:
-            return f"Error: {error_msg}"
-        
-        # Read original content if file exists (for diff)
-        original_content = ""
+            return f'Error: {error_msg}'
+        original_content = ''
         file_exists = os.path.exists(resolved_path)
         if file_exists and show_diff:
             try:
                 with open(resolved_path, encoding=encoding) as f:
                     original_content = f.read()
             except Exception:
-                # If we can't read it, just skip the diff
                 show_diff = False
-
-        # Create parent directories if they don't exist
-        parent_dir = os.path.dirname(resolved_path)
-        if parent_dir:
-            # Validate parent directory is also within allowed paths
+        if parent_dir := os.path.dirname(resolved_path):
             parent_valid, _, parent_error = validate_file_path(parent_dir)
             if not parent_valid:
                 return (
-                    f"Error: Parent directory is outside allowed paths: "
-                    f"{parent_error}"
-                )
+                    f'Error: Parent directory is outside allowed paths: {parent_error}'
+                    )
             os.makedirs(parent_dir, exist_ok=True)
-
-        # Write the file
-        with open(resolved_path, "w", encoding=encoding) as f:
+        with open(resolved_path, 'w', encoding=encoding) as f:
             f.write(content)
-
-        # Get file size for confirmation
         size = os.path.getsize(resolved_path)
-        result = f"Success: Written {size} bytes to {path}"
-
-        # Add diff if requested and file existed
+        result = f'Success: Written {size} bytes to {path}'
         if show_diff and file_exists and original_content != content:
             diff = generate_inline_diff(original_content, content, path)
             summary = summarize_changes(original_content, content)
-            result += f"\n\n{summary}\n\n{diff}"
+            result += f'\n\n{summary}\n\n{diff}'
         elif file_exists and original_content == content:
-            result += "\n\nNo changes made - file content is identical."
-
+            result += '\n\nNo changes made - file content is identical.'
         return result
-
     except PermissionError:
-        return f"Error: Permission denied writing to: {path}"
+        return f'Error: Permission denied writing to: {path}'
     except OSError as e:
-        if "read-only" in str(e).lower() or "permission" in str(e).lower():
-            return f"Error: Permission denied - {str(e)}"
-        return f"Error: OS error writing file: {str(e)}"
+        if 'read-only' in str(e).lower() or 'permission' in str(e).lower():
+            return f'Error: Permission denied - {str(e)}'
+        return f'Error: OS error writing file: {str(e)}'
     except Exception as e:
-        return f"Error: Failed to write file: {str(e)}"
+        return f'Error: Failed to write file: {str(e)}'
 
 
-def file_append(path: str, content: str, encoding: str = "utf-8") -> str:
+def file_append(path: str, content: str, encoding: str='utf-8') ->str:
     """Append content to an existing file.
 
     Args:
@@ -192,37 +151,24 @@ def file_append(path: str, content: str, encoding: str = "utf-8") -> str:
         Success message or error message if failed
     """
     try:
-        # Validate the path first
         is_valid, resolved_path, error_msg = validate_file_path(path)
         if not is_valid:
-            return f"Error: {error_msg}"
-        
-        # Create parent directories if they don't exist
-        parent_dir = os.path.dirname(resolved_path)
-        if parent_dir:
-            # Validate parent directory is also within allowed paths
+            return f'Error: {error_msg}'
+        if parent_dir := os.path.dirname(resolved_path):
             parent_valid, _, parent_error = validate_file_path(parent_dir)
             if not parent_valid:
                 return (
-                    f"Error: Parent directory is outside allowed paths: "
-                    f"{parent_error}"
-                )
+                    f'Error: Parent directory is outside allowed paths: {parent_error}'
+                    )
             os.makedirs(parent_dir, exist_ok=True)
-
-        # Check if file exists for appropriate message
         file_exists = os.path.exists(resolved_path)
-
-        # Append to the file
-        with open(resolved_path, "a", encoding=encoding) as f:
+        with open(resolved_path, 'a', encoding=encoding) as f:
             f.write(content)
-
-        # Provide appropriate success message
         if not file_exists:
-            return f"Success: Created and appended to {path}"
+            return f'Success: Created and appended to {path}'
         else:
-            return f"Success: Appended {len(content)} characters to {path}"
-
+            return f'Success: Appended {len(content)} characters to {path}'
     except PermissionError:
-        return f"Error: Permission denied appending to: {path}"
+        return f'Error: Permission denied appending to: {path}'
     except Exception as e:
-        return f"Error: Failed to append to file: {str(e)}"
+        return f'Error: Failed to append to file: {str(e)}'

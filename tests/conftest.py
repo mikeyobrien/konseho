@@ -1,9 +1,7 @@
 """Pytest configuration for Konseho tests."""
-
-import asyncio
-from collections.abc import Generator
-
 import pytest
+import asyncio
+from typing import Generator
 
 
 @pytest.fixture(scope="session")
