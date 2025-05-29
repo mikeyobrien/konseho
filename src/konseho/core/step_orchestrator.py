@@ -43,11 +43,11 @@ class StepOrchestrator:
         """
         results = []
         if self.event_emitter:
-            self.event_emitter.emit('council_started', {'task': task,
+            self.event_emitter.emit('council:start', {'task': task,
                 'council': council_name})
         for i, step in enumerate(self.steps):
             if self.event_emitter:
-                self.event_emitter.emit('step_started', {'step': i, 'type':
+                self.event_emitter.emit('step:start', {'step': i, 'type':
                     step.__class__.__name__, 'index': i, 'total': len(self.
                     steps)})
             result = await self.error_handler.execute_with_error_handling(step,
@@ -62,10 +62,10 @@ class StepOrchestrator:
             }
             context.add_result(result_dict)
             if self.event_emitter:
-                self.event_emitter.emit('step_completed', {'step': i,
+                self.event_emitter.emit('step:complete', {'step': i,
                     'type': step.__class__.__name__, 'result': result_dict})
         if self.event_emitter:
-            self.event_emitter.emit('council_completed', {'task': task,
+            self.event_emitter.emit('council:complete', {'task': task,
                 'council': council_name, 'steps_completed': len(results)})
         return results
 

@@ -96,7 +96,12 @@ class CouncilFactory:
             Council instance with injected dependencies
         """
         from typing import cast
-        dependencies = self.dependencies
+        # Create new dependencies for each council to ensure isolation
+        dependencies = CouncilDependencies(
+            context=self.dependencies.context,  # Context can be shared
+            event_emitter=EventEmitter(),  # Each council gets its own event emitter
+            output_manager=self.dependencies.output_manager  # Output manager can be shared
+        )
         if save_outputs and not dependencies.output_manager:
             dependencies = CouncilDependencies.with_output_manager(output_dir
                 =output_dir or 'council_outputs', context=dependencies.

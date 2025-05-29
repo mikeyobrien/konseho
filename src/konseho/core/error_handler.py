@@ -60,7 +60,7 @@ class ErrorHandler:
         """
         logger.error(f'Error in step {step.name}: {error}')
         if self.event_emitter:
-            self.event_emitter.emit('step_error', {'step': step.name,
+            self.event_emitter.emit('step:error', {'step': step.name,
                 'error': str(error), 'attempt': attempt, 'strategy': self.
                 error_strategy})
         if self.error_strategy == ErrorStrategy.HALT:

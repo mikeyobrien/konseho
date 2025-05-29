@@ -54,6 +54,9 @@ class TestEventSystem:
     async def test_step_error_events(self):
         """Test error events are properly emitted."""
         class FailingStep:
+            name = "FailingStep"
+            def validate(self):
+                pass
             async def execute(self, task, context):
                 raise ValueError("Step failed")
         
@@ -194,9 +197,10 @@ class TestEventSystem:
     async def test_multiple_councils_event_isolation(self):
         """Test events from different councils don't interfere."""
         agent = AgentWrapper(MockStrandsAgent("agent"))
+        factory = CouncilFactory()
         
-        council1 = Council("council1", [ParallelStep([agent])])
-        council2 = Council("council2", [ParallelStep([agent])])
+        council1 = factory.create_council("council1", [ParallelStep([agent])])
+        council2 = factory.create_council("council2", [ParallelStep([agent])])
         
         collector1 = EventCollector()
         collector2 = EventCollector()
