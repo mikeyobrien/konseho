@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 from konseho.core.error_handler import ErrorHandler
-from konseho.protocols import IEventEmitter, IOutputManager, IStep, IStepResult
+from konseho.protocols import IEventEmitter, IOutputManager, IStep, IStepResult, JSON
 if TYPE_CHECKING:
     from konseho.core.context import Context
 logger = logging.getLogger(__name__)
@@ -53,10 +53,17 @@ class StepOrchestrator:
             result = await self.error_handler.execute_with_error_handling(step,
                 task, context, self._execute_single_step)
             results.append(result)
-            context.add_result(result)
+            # Convert IStepResult to JSON-compatible dict for context
+            from typing import cast
+            result_dict: JSON = {
+                'output': result.output,
+                'metadata': cast(JSON, result.metadata),
+                'success': result.success
+            }
+            context.add_result(result_dict)
             if self.event_emitter:
                 self.event_emitter.emit('step_completed', {'step': i,
-                    'type': step.__class__.__name__, 'result': result})
+                    'type': step.__class__.__name__, 'result': result_dict})
         if self.event_emitter:
             self.event_emitter.emit('council_completed', {'task': task,
                 'council': council_name, 'steps_completed': len(results)})

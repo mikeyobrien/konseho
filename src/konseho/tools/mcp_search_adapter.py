@@ -4,9 +4,15 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Callable
-from typing import Any
+from typing import cast, Protocol
 from konseho.protocols import JSON
 from .search_ops import SearchProvider
+
+
+class MCPTool(Protocol):
+    """Protocol for MCP tool functions."""
+    def __call__(self, **kwargs: object) -> object: ...
+    def invoke(self, **kwargs: object) -> object: ...
 
 
 class MCPSearchProvider(SearchProvider):
@@ -16,7 +22,7 @@ class MCPSearchProvider(SearchProvider):
     and adapts their responses to the standard search result format.
     """
 
-    def __init__(self, mcp_tool: Callable[..., Any], provider_name: (str | None)=None):
+    def __init__(self, mcp_tool: MCPTool, provider_name: (str | None)=None):
         """Initialize MCP search provider.
 
         Args:
@@ -32,10 +38,10 @@ class MCPSearchProvider(SearchProvider):
         """Return the provider name."""
         return self._provider_name
 
-    def _extract_provider_name(self, tool: Callable[..., Any]) ->str:
+    def _extract_provider_name(self, tool: MCPTool) ->str:
         """Extract provider name from tool function."""
         if hasattr(tool, 'tool_name'):
-            tool_name = tool.tool_name.lower()
+            tool_name = str(getattr(tool, 'tool_name')).lower()
         else:
             tool_name = getattr(tool, '__name__', 'mcp_search').lower()
         if 'brave' in tool_name:
@@ -184,14 +190,14 @@ def create_mcp_search_provider(tool_pattern: str, tools: list[object]) ->(
             search_indicators = ['search', 'find', 'query', 'lookup']
             if any(indicator in tool_name for indicator in search_indicators):
                 if callable(tool):
-                    return MCPSearchProvider(tool)
+                    return MCPSearchProvider(cast(MCPTool, tool))
     for tool in tools:
         tool_name = getattr(tool, '__name__', '').lower()
         tool_doc = (getattr(tool, '__doc__', '') or '').lower()
         if ('search' in tool_name or 'search' in tool_doc
             ) and pattern_lower in tool_name:
             if callable(tool):
-                return MCPSearchProvider(tool)
+                return MCPSearchProvider(cast(MCPTool, tool))
     return None
 
 

@@ -300,16 +300,8 @@ Provide your updated proposal or critique others."""
     async def _get_proposal(self, agent: AgentWrapper, prompt: str) ->str:
         """Get a proposal from an agent."""
         result = await agent.work_on(prompt)
-        # Handle various response formats
-        if isinstance(result, dict):
-            try:
-                if 'message' in result:
-                    return str(result['message'])
-                elif 'content' in result:
-                    return str(result['content'])
-            except (TypeError, KeyError):
-                pass
-        return str(result)
+        # work_on returns str, so just return it directly
+        return result
 
     def _create_debate_prompt(self, proposals: dict[str, str], round_num: int
         ) ->str:

@@ -100,7 +100,6 @@ OLLAMA_HOST=http://localhost:11434
     print('\nYou can now run:')
     print('  python -m konseho        # Start interactive chat')
     print('  python -m konseho --config  # Check configuration')
-    return True
 
 
 if __name__ == '__main__':

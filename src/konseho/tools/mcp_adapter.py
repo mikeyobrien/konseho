@@ -4,8 +4,13 @@ from __future__ import annotations
 import inspect
 import json
 from collections.abc import Callable
-from typing import Any
+from typing import Protocol
 from konseho.protocols import JSON
+
+
+class MCPToolCallable(Protocol):
+    """Protocol for MCP tool callables."""
+    def __call__(self, *args: object, **kwargs: object) -> object: ...
 
 
 class MCPToolAdapter:
@@ -16,7 +21,7 @@ class MCPToolAdapter:
     that agents can work with effectively.
     """
 
-    def __init__(self, mcp_tool: Callable[..., Any], name: (str | None)=None):
+    def __init__(self, mcp_tool: MCPToolCallable, name: (str | None)=None):
         """Initialize MCP tool adapter.
 
         Args:
@@ -133,8 +138,8 @@ def should_adapt_tool(tool: object) ->bool:
     return any(mcp_indicators)
 
 
-def create_mcp_tool(name: str, description: str, mcp_function: Callable[..., Any]
-    ) ->Callable[..., Any]:
+def create_mcp_tool(name: str, description: str, mcp_function: MCPToolCallable
+    ) ->MCPToolCallable:
     """Create a Konseho-compatible tool from an MCP function.
 
     This is useful when you want to manually wrap specific MCP tools

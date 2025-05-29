@@ -1,12 +1,13 @@
 """HTTP operation tools for agents."""
 from __future__ import annotations
 
-from typing import Any
+from typing import cast
 import requests
+from konseho.protocols import JSON
 
 
 def http_get(url: str, headers: (dict[str, str] | None)=None, timeout: int=10
-    ) ->dict[str, Any]:
+    ) ->dict[str, JSON]:
     """Make HTTP GET request.
 
     Args:
@@ -27,12 +28,12 @@ def http_get(url: str, headers: (dict[str, str] | None)=None, timeout: int=10
             f'Invalid URL: {url}. URL must start with http:// or https://'}
     try:
         response = requests.get(url, headers=headers, timeout=timeout)
-        result = {'status_code': response.status_code, 'text': response.
-            text, 'headers': dict(response.headers)}
+        result: dict[str, JSON] = {'status_code': response.status_code, 'text': response.
+            text, 'headers': cast(JSON, dict(response.headers))}
         content_type = response.headers.get('Content-Type', '').lower()
         if 'application/json' in content_type:
             try:
-                result['json'] = response.json()
+                result['json'] = cast(JSON, response.json())
             except:
                 pass
         try:
@@ -50,8 +51,8 @@ def http_get(url: str, headers: (dict[str, str] | None)=None, timeout: int=10
         return {'error': f'Unexpected error: {str(e)}'}
 
 
-def http_post(url: str, data: (Any | None)=None, json: (Any | None)=None,
-    headers: (dict[str, str] | None)=None, timeout: int=10) ->dict[str, Any]:
+def http_post(url: str, data: (dict[str, str] | None)=None, json: (JSON | None)=None,
+    headers: (dict[str, str] | None)=None, timeout: int=10) ->dict[str, JSON]:
     """Make HTTP POST request.
 
     Args:
@@ -75,12 +76,12 @@ def http_post(url: str, data: (Any | None)=None, json: (Any | None)=None,
     try:
         response = requests.post(url, data=data, json=json, headers=headers,
             timeout=timeout)
-        result = {'status_code': response.status_code, 'text': response.
-            text, 'headers': dict(response.headers)}
+        result: dict[str, JSON] = {'status_code': response.status_code, 'text': response.
+            text, 'headers': cast(JSON, dict(response.headers))}
         content_type = response.headers.get('Content-Type', '').lower()
         if 'application/json' in content_type:
             try:
-                result['json'] = response.json()
+                result['json'] = cast(JSON, response.json())
             except:
                 pass
         try:

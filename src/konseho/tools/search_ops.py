@@ -4,7 +4,7 @@ from __future__ import annotations
 import hashlib
 import os
 from abc import ABC, abstractmethod
-from typing import Any  # TODO: Remove Any usage
+from typing import cast
 from konseho.protocols import JSON
 
 

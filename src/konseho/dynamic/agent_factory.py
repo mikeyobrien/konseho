@@ -1,7 +1,6 @@
 """Factory for creating agents with dynamic personas based on task requirements."""
 from __future__ import annotations
 
-from typing import Any  # TODO: Remove Any usage
 from konseho.protocols import JSON
 from ..agents.base import AgentWrapper, create_agent
 from ..dynamic.analyzer import TaskType

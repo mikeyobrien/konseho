@@ -3,11 +3,13 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, cast, AsyncGenerator
+from typing import TYPE_CHECKING, Any, cast, AsyncGenerator
 from strands import Agent
 from ..agents.base import AgentWrapper
-from ..factories import CouncilDependencies
 from ..protocols import IAgent, IStepResult, IStep, JSON, StepMetadata
+
+if TYPE_CHECKING:
+    from ..factories import CouncilDependencies
 from .error_handler import ErrorHandler, ErrorStrategy
 from .moderator_assigner import ModeratorAssigner
 from .step_orchestrator import StepOrchestrator
@@ -20,7 +22,7 @@ class Council:
 
     def __init__(self, name: str='council', steps: (list[Step] | None)=None,
         agents: (list[Agent | AgentWrapper] | None)=None, dependencies: (
-        CouncilDependencies | None)=None, error_strategy: str='halt',
+        'CouncilDependencies' | None)=None, error_strategy: str='halt',
         workflow: str='sequential', max_retries: int=3):
         """Initialize a council.
 
@@ -146,13 +148,15 @@ class Council:
             Summary dictionary
         """
         # Handle IContext vs Context
+        from typing import cast
+        summary: dict[str, JSON]
         if hasattr(self.context, 'get_summary'):
-            summary = self.context.get_summary()
+            summary = cast(dict[str, JSON], self.context.get_summary())
         else:
             summary = {}
         summary.update({'council': self.name, 'task': task, 'workflow':
             self.workflow, 'steps_completed': len(results),
-            'agents_involved': self._get_agent_names()})
+            'agents_involved': cast(JSON, self._get_agent_names())})
         return summary
 
     async def _save_output(self, task: str, result: dict[str, JSON]) -> None:

@@ -1,7 +1,7 @@
 """Builder for creating dynamic councils based on user queries."""
 from __future__ import annotations
 
-from typing import Any  # TODO: Remove Any usage
+from typing import cast
 from konseho.protocols import JSON
 from ..core.context import Context
 from ..core.council import Council

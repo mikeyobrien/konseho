@@ -162,7 +162,7 @@ class MCP:
             servers.append(server_info)
         return servers
 
-    def list_tools(self) ->list[dict[str, str]]:
+    def list_tools(self) ->list[dict[str, str | bool]]:
         """List all available tools.
 
         Returns:

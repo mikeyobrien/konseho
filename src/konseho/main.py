@@ -83,7 +83,7 @@ def create_example_council() ->Council:
     from konseho.protocols import IStep
     debate_step = DebateStep(agents=[explorer, planner, coder], rounds=1, voting_strategy='majority')
     council = factory.create_council(name='ExampleCouncil', steps=[cast(IStep, debate_step)])
-    return cast(Council, council)
+    return council
 
 
 async def run_interactive_chat(council: (Council | None)=None, dynamic_mode:
@@ -212,7 +212,7 @@ async def run_single_query(prompt: str, council: (Council | None)=None,
         print('📊 Final Result:')
         print('=' * 50)
         final_answer = None
-        if isinstance(result, dict) and 'results' in result:  # type: ignore[redundant-expr]
+        if isinstance(result, dict) and 'results' in result:
             step_results = result['results']
             if isinstance(step_results, dict):
                 step_keys = [k for k in step_results.keys() if k.startswith('step_')]
@@ -229,7 +229,7 @@ async def run_single_query(prompt: str, council: (Council | None)=None,
                             print(f'\n{display_answer}')
         if final_answer is None:
             print('\n[No final answer produced]')
-        if isinstance(result, dict) and 'metadata' in result:  # type: ignore[redundant-expr]
+        if isinstance(result, dict) and 'metadata' in result:
             metadata = result['metadata']
             if isinstance(metadata, dict):
                 print('\n📈 Summary:')

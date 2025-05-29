@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import Any  # TODO: Remove Any usage
+from typing import cast
 from konseho.protocols import JSON
 from ..agents.base import create_agent
 from .analyzer import TaskType

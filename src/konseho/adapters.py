@@ -133,7 +133,7 @@ class ContextAdapter(IContext):
         """Get value from context."""
         result = self._context.get(key, default)
         # Cast to JSON type for type safety
-        return result  # type: ignore[no-any-return]
+        return result
 
     def update(self, data: dict[str, JSON]) -> None:
         """Update context with multiple key-value pairs."""

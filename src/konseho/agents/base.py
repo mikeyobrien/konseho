@@ -105,7 +105,7 @@ class AgentWrapper:
         """Add parallel execution tool to agent."""
 
         @tool
-        def parallel(tool_name: str, args_list: list[dict[str, object]]) -> list[object]:  # type: ignore[misc]
+        def parallel(tool_name: str, args_list: list[dict[str, JSON]]) -> list[object]:
             """Execute any tool multiple times in parallel with different arguments.
 
             Args:
@@ -181,6 +181,7 @@ def create_agent(**config: object) -> Agent:
     Creates a real Strands agent using the provided configuration.
     """
     # Extract and prepare configuration
+    from typing import cast
     model_value = config.get('model', 'gpt-4')
     if model_value is None:
         from konseho.config import create_model_from_config
@@ -188,6 +189,7 @@ def create_agent(**config: object) -> Agent:
     elif isinstance(model_value, str):
         model = model_value
     else:
+        # model_value is already a Model instance
         model = model_value
     
     if isinstance(model, str):
@@ -216,7 +218,7 @@ def create_agent(**config: object) -> Agent:
     
     # Create agent with required arguments
     agent = Agent(
-        model=model,
+        model=model,  # type: ignore[arg-type]
         tools=tools if isinstance(tools, list) else [],
         system_prompt=system_prompt
     )

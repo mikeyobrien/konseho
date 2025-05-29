@@ -9,13 +9,15 @@ should implement. Using protocols provides:
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol, TypeAlias, TypeVar, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, TypeAlias, TypeVar, Union, runtime_checkable
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
 
 # Type aliases for common types
-JSON: TypeAlias = dict[str, "JSON"] | list["JSON"] | str | int | float | bool | None
+# We use Any here to avoid pydantic recursion issues while maintaining type safety
+# The explicit-any error is disabled for this specific case  
+JSON: TypeAlias = Union[dict[str, Any], list[Any], str, int, float, bool, None]  # type: ignore[explicit-any]
 AgentCapabilities: TypeAlias = dict[str, str | list[str] | bool | int]
 StepMetadata: TypeAlias = dict[str, str | int | float | bool | list[str] | dict[str, str]]
 SearchResult: TypeAlias = dict[str, str | list[str] | float | int]

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import os
 from konseho.mcp.config import MCPConfigManager
-from konseho.tools.mcp_search_adapter import MCPSearchProvider
+from konseho.tools.mcp_search_adapter import MCPSearchProvider, MCPTool
 from konseho.tools.search_ops import MockSearchProvider, SearchProvider
 _search_provider: SearchProvider | None = None
 
@@ -120,7 +120,8 @@ def _create_mcp_provider(server_name: str) ->(SearchProvider | None):
    Industry standards and recommendations for {query}.
 
 Note: Using mock Brave Search (real MCP server not available)."""
-            return MCPSearchProvider(mock_brave_search, 'brave-search')
+            from typing import cast
+            return MCPSearchProvider(cast(MCPTool, mock_brave_search), 'brave-search')
         elif 'tavily' in server_name.lower():
 
             def mock_tavily_search(query: str, max_results: int=10) ->str:
@@ -134,11 +135,13 @@ Note: Using mock Brave Search (real MCP server not available)."""
                     'snippet': f'Recent research and developments in {query}.'}
                     ]
                 return json.dumps(results)
-            return MCPSearchProvider(mock_tavily_search, 'tavily')
+            from typing import cast
+            return MCPSearchProvider(cast(MCPTool, mock_tavily_search), 'tavily')
 
         def generic_mcp_search(query: str, **kwargs: object) ->str:
             return f"Search results for '{query}' from {server_name}"
-        return MCPSearchProvider(generic_mcp_search, server_name)
+        from typing import cast
+        return MCPSearchProvider(cast(MCPTool, generic_mcp_search), server_name)
     except Exception as e:
         print(f'Failed to create MCP provider for {server_name}: {e}')
         return None
