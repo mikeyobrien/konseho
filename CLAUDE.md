@@ -41,6 +41,28 @@ uv run mypy src
 
 # Run all quality checks
 uv run black src tests && uv run ruff check src tests && uv run mypy src && uv run pytest
+
+# Run pre-commit hooks manually
+uv run pre-commit run --all-files
+
+# Install pre-commit hooks (one-time setup)
+uv run pre-commit install
+```
+
+### Code Quality Tools
+
+The project uses several pre-commit hooks to ensure code quality:
+
+1. **Black** - Automatic code formatting (configured in pyproject.toml)
+2. **Ruff** - Fast Python linter with auto-fix capabilities
+3. **mypy** - Static type checking with strict configuration
+4. **Bandit** - Security vulnerability scanning
+5. **Safety** - Dependency vulnerability checking
+6. **pyupgrade** - Automatically upgrade syntax for newer Python versions
+
+These hooks run automatically on every commit. To bypass temporarily (not recommended):
+```bash
+git commit --no-verify -m "your message"
 ```
 
 ## Architecture Overview
