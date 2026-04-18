@@ -1,7 +1,7 @@
 """Context management for sharing state between agents and steps."""
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 
@@ -14,9 +14,10 @@ class Context:
         self._history: list[dict[str, Any]] = []
         self._results: list[Any] = []  # Changed from dict to list
         self._metadata: dict[str, Any] = {
-            "created_at": datetime.now().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
             "version": "1.0.0",
         }
+        self._max_history: int = 1000  # Configurable max history size
 
     def add(self, key: str, value: Any) -> None:
         """Add or update a value in the context."""
@@ -26,9 +27,10 @@ class Context:
                 "action": "add",
                 "key": key,
                 "value": value,
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         )
+        self._trim_history()
 
     def get(self, key: str, default: Any = None) -> Any:
         """Get a value from the context."""
@@ -46,15 +48,21 @@ class Context:
             {
                 "action": "result",
                 "step_index": len(self._results) - 1,
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         )
+        self._trim_history()
 
     def get_results(self) -> list[Any]:
         """Get all stored results."""
         import copy
 
         return copy.deepcopy(self._results)
+
+    def _trim_history(self) -> None:
+        """Trim history to max size, removing oldest entries."""
+        if len(self._history) > self._max_history:
+            self._history = self._history[-self._max_history:]
 
     def get_summary(self) -> dict[str, Any]:
         """Get a summary of the context state."""
@@ -106,8 +114,9 @@ class Context:
         self._data.clear()
         self._results.clear()
         self._history.append(
-            {"action": "clear", "timestamp": datetime.now().isoformat()}
+            {"action": "clear", "timestamp": datetime.now(timezone.utc).isoformat()}
         )
+        self._trim_history()
 
     def update(self, data: dict[str, Any]) -> None:
         """Update context with multiple key-value pairs."""
@@ -116,9 +125,10 @@ class Context:
             {
                 "action": "update",
                 "keys": list(data.keys()),
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         )
+        self._trim_history()
 
     def to_dict(self) -> dict[str, Any]:
         """Export context as dictionary."""
