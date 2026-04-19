@@ -1,7 +1,7 @@
 """Context management for sharing state between agents and steps."""
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 
@@ -14,7 +14,7 @@ class Context:
         self._history: list[dict[str, Any]] = []
         self._results: list[Any] = []  # Changed from dict to list
         self._metadata: dict[str, Any] = {
-            "created_at": datetime.now().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
             "version": "1.0.0",
         }
 
@@ -26,7 +26,7 @@ class Context:
                 "action": "add",
                 "key": key,
                 "value": value,
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         )
 
@@ -46,7 +46,7 @@ class Context:
             {
                 "action": "result",
                 "step_index": len(self._results) - 1,
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         )
 
@@ -106,7 +106,7 @@ class Context:
         self._data.clear()
         self._results.clear()
         self._history.append(
-            {"action": "clear", "timestamp": datetime.now().isoformat()}
+            {"action": "clear", "timestamp": datetime.now(timezone.utc).isoformat()}
         )
 
     def update(self, data: dict[str, Any]) -> None:
@@ -116,7 +116,7 @@ class Context:
             {
                 "action": "update",
                 "keys": list(data.keys()),
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         )
 
