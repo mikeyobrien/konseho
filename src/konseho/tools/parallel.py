@@ -1,6 +1,7 @@
 """Parallel execution utilities for tools."""
 
 import hashlib
+import threading
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
@@ -17,6 +18,7 @@ class ParallelExecutor:
         """
         self.max_workers = max_workers
         self._cache = {}  # Simple cache for deduplication
+        self._cache_lock = threading.Lock()
 
     def execute_parallel(
         self, tool: Callable, args_list: list[dict[str, Any]]
@@ -40,12 +42,13 @@ class ParallelExecutor:
 
         for i, args in enumerate(args_list):
             cache_key = self._get_cache_key(tool.__name__, args)
-            if cache_key in self._cache:
-                results[i] = self._cache[cache_key]
-            else:
-                if cache_key not in unique_work:
-                    unique_work[cache_key] = (args, [])
-                unique_work[cache_key][1].append(i)
+            with self._cache_lock:
+                if cache_key in self._cache:
+                    results[i] = self._cache[cache_key]
+                    continue
+            if cache_key not in unique_work:
+                unique_work[cache_key] = (args, [])
+            unique_work[cache_key][1].append(i)
 
         # Execute unique work items in parallel
         if unique_work:
@@ -59,7 +62,8 @@ class ParallelExecutor:
                     cache_key, indices = futures[future]
                     try:
                         result = future.result()
-                        self._cache[cache_key] = result
+                        with self._cache_lock:
+                            self._cache[cache_key] = result
                         # Assign result to all indices that need it
                         for idx in indices:
                             results[idx] = result
