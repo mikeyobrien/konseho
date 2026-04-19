@@ -1,8 +1,11 @@
 """Configuration management for Konseho model providers."""
 
+import logging
 import os
 from dataclasses import dataclass
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 # Try to load environment variables from .env file
 try:
@@ -10,8 +13,9 @@ try:
 
     load_dotenv()
 except ImportError:
-    # dotenv not installed, rely on system environment variables
-    pass
+    logger.debug(
+        "python-dotenv not installed, using system environment variables only"
+    )
 
 
 @dataclass
