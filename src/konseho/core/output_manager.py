@@ -154,7 +154,7 @@ class OutputManager:
                                                 )
                                             else:
                                                 text = str(parsed)
-                                        except:
+                                        except (json.JSONDecodeError, ValueError):
                                             text = content
                                     else:
                                         text = str(content)
