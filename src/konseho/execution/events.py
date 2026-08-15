@@ -59,6 +59,20 @@ class EventEmitter:
         """Initialize event emitter."""
         self._listeners: dict[str, list[Callable]] = {}
         self._async_listeners: dict[str, list[Callable]] = {}
+        # Hold strong references to fire-and-forget handler tasks so they are
+        # not garbage-collected before completion (fixes #1).
+        self._pending_tasks: set[asyncio.Task] = set()
+
+    async def wait_pending(self) -> None:
+        """Await all in-flight async event-handler tasks.
+
+        Callers/tests can await this to deterministically wait for handlers
+        spawned by :meth:`emit` to finish.
+        """
+        if not self._pending_tasks:
+            return
+        await asyncio.gather(*list(self._pending_tasks), return_exceptions=True)
+        self._pending_tasks.clear()
 
     def on(self, event: str, handler: Callable) -> None:
         """Register an event handler."""
@@ -92,10 +106,14 @@ class EventEmitter:
 
         # Handle async listeners
         if event in self._async_listeners:
-            # Create tasks for async handlers
+            # Create tasks for async handlers (tracked to prevent premature GC)
             loop = asyncio.get_event_loop()
             for handler in self._async_listeners[event]:
-                loop.create_task(self._call_async_handler(handler, event, data))
+                task = loop.create_task(
+                    self._call_async_handler(handler, event, data)
+                )
+                self._pending_tasks.add(task)
+                task.add_done_callback(self._pending_tasks.discard)
 
     async def _call_async_handler(
         self, handler: Callable, event: str, data: Any
