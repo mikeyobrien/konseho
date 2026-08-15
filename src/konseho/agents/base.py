@@ -200,9 +200,7 @@ class AgentWrapper:
             if hasattr(agent, "config"):
                 config["config"] = copy.deepcopy(agent.config)
 
-            # Create new agent (would use create_agent in real implementation)
-            from konseho.agents.base import create_agent
-
+            # Create new agent (create_agent is defined in this module)
             return create_agent(**config)
 
         except Exception:
